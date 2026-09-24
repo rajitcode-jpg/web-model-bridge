@@ -12,9 +12,12 @@
       <span class="logo">🌉</span>
       <span class="brand-name">web-model-bridge</span>
     </div>
-    <div class="topbar-status" id="server-status">
-      <span class="pulse green"></span>
-      <span>Running</span>
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <a href="/chat" style="color: #818cf8; text-decoration: none; font-size: 13px; font-weight: 500; padding: 4px 10px; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 6px;">💬 Chat Studio →</a>
+      <div class="topbar-status" id="server-status">
+        <span class="pulse green"></span>
+        <span>Running</span>
+      </div>
     </div>
   </nav>
 
@@ -39,6 +42,52 @@
             <code id="anthropic-url"></code>
             <button class="btn-copy" data-target="anthropic-url">Copy</button>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- API Code Implementation & Quickstart Card -->
+    <section class="card" id="code-implementation-card">
+      <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <h2>API Code Implementation</h2>
+          <span class="badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3);">Copy & Run</span>
+        </div>
+        <div class="code-controls">
+          <label for="snippet-model-select" style="font-size: 12px; color: var(--text-secondary); margin-right: 6px;">Target Model:</label>
+          <select id="snippet-model-select" class="code-select">
+            <option value="gemini">Google Gemini (gemini-3-flash)</option>
+            <option value="chatgpt">ChatGPT (gpt-5.4-mini)</option>
+            <option value="claude">Claude (claude-sonnet-4-6)</option>
+            <option value="deepseek" selected>DeepSeek (deepseek-v4)</option>
+            <option value="qwen">Qwen (qwen-3.5-plus)</option>
+            <option value="grok">xAI Grok (grok-3)</option>
+            <option value="perplexity">Perplexity (sonar-pro)</option>
+            <option value="kimi">Moonshot Kimi (kimi-k2.5)</option>
+            <option value="glm">Zhipu GLM (glm-5)</option>
+          </select>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="code-tabs">
+          <button class="code-tab active" data-tab="curl-openai">cURL (OpenAI)</button>
+          <button class="code-tab" data-tab="curl-anthropic">cURL (Anthropic)</button>
+          <button class="code-tab" data-tab="python">Python (SDK)</button>
+          <button class="code-tab" data-tab="nodejs">Node.js (SDK)</button>
+          <button class="code-tab" data-tab="claude-cli">Claude Code CLI</button>
+          <button class="code-tab" data-tab="cursor">Cursor / Windsurf</button>
+          <button class="code-tab" data-tab="openclaw">OpenClaw / LibreChat</button>
+        </div>
+
+        <div class="code-container">
+          <div class="code-toolbar">
+            <span class="code-lang-tag" id="code-lang-indicator">BASH / CURL</span>
+            <button class="btn-copy-code" id="btn-copy-snippet">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 5px; vertical-align: -1px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              <span id="btn-copy-snippet-text">Copy Code</span>
+            </button>
+          </div>
+          <pre class="code-pre"><code id="code-snippet-display"></code></pre>
         </div>
       </div>
     </section>

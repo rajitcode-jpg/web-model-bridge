@@ -36,6 +36,8 @@ export interface ChatRequest {
   stream: boolean;
   tools?: ToolDef[];
   signal?: AbortSignal;
+  files?: import('./file-handler.js').FileAttachment[];
+  typingDelayMs?: number;
 }
 
 export abstract class BaseProvider {

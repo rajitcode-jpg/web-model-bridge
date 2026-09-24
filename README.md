@@ -1,101 +1,150 @@
-
-
 # 🌉 web-model-bridge
 
-**Bridge web AI models through OpenAI-compatible API**
+**Universal Local AI Inference Bridge — Zero Token Costs, Zero API Keys**
 
-Use Claude, ChatGPT, DeepSeek, and 8 more AI models — completely free, zero API tokens.
+Turn free web-based AI interfaces into standardized **OpenAI (`/v1/chat/completions`)** and **Anthropic (`/v1/messages`)** APIs. Compatible with Claude Code, Cursor, OpenClaw, Continue.dev, and any standard LLM application.
 
-[License: MIT](LICENSE)
-[Node.js](https://nodejs.org/)
-[TypeScript](https://www.typescriptlang.org/)
-[Tests](#testing)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-green.svg)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0%2B-blue.svg)](https://www.typescriptlang.org/)
+[![Tests](https://img.shields.io/badge/Tests-Passing-brightgreen.svg)](#testing)
 
-[Quick Start](#quick-start) · [Supported Models](#supported-models) · [Configuration](#configuration) · [API Reference](#api-reference) · [Contributing](#contributing)
-
-
+[Quick Start](#quick-start) · [Supported Models](#supported-models) · [Connecting AI Tools](#connecting-your-ai-tools) · [API Reference](#api-reference) · [Architecture](#architecture) · [Configuration](#configuration)
 
 ---
 
 ## What is this?
 
-**web-model-bridge** is a standalone HTTP service that lets any AI tool use web-based AI models through their free browser interfaces. It acts as a bridge between AI tools (OpenClaw, Claude Code, Cursor, etc.) and web AI platforms (Claude, ChatGPT, DeepSeek, etc.).
+**web-model-bridge** is a local proxy daemon that bridges developer tools, IDE extensions, and automated workflows directly to the web interfaces of 9 leading AI providers.
 
 ```
-Your AI Tool  →  web-model-bridge  →  Browser  →  Web AI Model
-(OpenClaw)       (localhost:3456)     (Chrome)    (claude.ai)
+Your AI Tool  ──►  web-model-bridge  ──►  Google Chrome (CDP)  ──►  Web AI Platforms
+(Claude Code,      (http://127.0.0.1:3456) (Real Browser Session)    (claude.ai, chatgpt.com,
+ Cursor, OpenClaw)                                                    deepseek.com, etc.)
 ```
 
-**How it works:** You log into AI websites once through a Dashboard. The bridge then uses your browser session to forward API requests — no API keys, no tokens, no cost.
+Unlike reverse-engineered API parsers that frequently break due to Cloudflare anti-bot checks and rotating session tokens, **web-model-bridge automates a genuine Chrome browser instance**. It inherits authentic browser fingerprinting, TLS fingerprints, and pre-existing login cookies—delivering maximum reliability at zero financial cost.
+
+---
 
 ## Why web-model-bridge?
 
-Compared to alternatives like gpt4free (66K stars), CLIProxyAPI (23K stars), and chat2api (3.4K stars):
-
-| | web-model-bridge | gpt4free | CLIProxyAPI | chat2api |
+| Feature | web-model-bridge | gpt4free | CLIProxyAPI | chat2api |
 |---|---|---|---|---|
-| **Approach** | Real browser automation | Reverse-engineered APIs | CLI OAuth proxy | Token simulation |
-| **Anti-blocking** | **Strongest** — real browser fingerprint | Weak — APIs break often | Medium | Weak — Cloudflare blocks |
-| **Cost** | **Free** — web free tier only | Free | **Needs $20-100/mo subscription** | Free |
-| **Platforms** | **11 platforms, 16 models** | Varies (unstable) | 4-5 platforms | ChatGPT only |
-| **API formats** | **OpenAI + Anthropic** | OpenAI only | OpenAI + Anthropic | OpenAI only |
-| **Language** | TypeScript (Node.js native) | Python | Go | Python |
+| **Approach** | Real browser engine automation (CDP) | Reverse-engineered endpoints | CLI OAuth wrapper | Token simulation |
+| **Anti-Bot Resistance** | **Highest** (Genuine Chrome fingerprint) | Low (Fails on Cloudflare/WAF) | Medium | Low |
+| **Cost** | **100% Free** (Uses free web sessions) | Free | Subscription required | Free |
+| **Active Platforms** | **9 Major Providers (All in one)** | Unstable | 3–4 platforms | ChatGPT only |
+| **Dual Protocols** | **OpenAI ChatML + Anthropic Messages** | OpenAI only | OpenAI + Anthropic | OpenAI only |
+| **Thinking Suppression**| **Native** (Filters `<think>` artifacts) | ❌ Raw output only | ❌ None | ❌ None |
+| **Interactive UI** | **Dashboard (`/`) + Playground (`/chat`)** | ❌ None | ❌ None | ❌ None |
+| **Concurrency** | **Origin-Isolated Page Pooling** | ❌ Race conditions | Linear | Linear |
 
-**Core advantages:**
+---
 
-1. **Strongest anti-blocking** — Uses Playwright real browser, websites can't distinguish from normal browsing
-2. **Truly free** — Only needs free web accounts, no paid subscriptions required
-3. **Widest coverage** — 11 platforms (international + Chinese), 16 models in one bridge
-4. **Dual API format** — Both `/v1/chat/completions` (OpenAI) and `/v1/messages` (Anthropic), works with every AI tool
-5. **Node.js ecosystem** — TypeScript native, `npx web-model-bridge` zero-install startup
+## Key Capabilities
 
-## Features
+* ⚡ **9 Flagship Providers Supported**: Claude, ChatGPT, DeepSeek, Google Gemini, xAI Grok, Perplexity, Moonshot Kimi, Qwen, and Zhipu GLM.
+* 🔄 **Dual Industry Standards**: Seamlessly serves both OpenAI `/v1/chat/completions` and Anthropic `/v1/messages`.
+* 🧠 **Thinking & Scratchpad Suppression**: Automatically identifies and suppresses internal reasoning blocks (`<think>`, status wrappers), streaming only clean, finalized answers.
+* 🛡️ **In-Page Error Intelligence**: Real-time DOM scanning immediately intercepts upstream rate limits, message quotas, or capacity overloads and returns clear error responses.
+* ⌨️ **Typing Pacing & Anti-Block Pacing**: Automatically falls back to humanized typing delays (12ms) if complex modern web textboxes block instant clipboard pastes.
+* 📋 **Interactive Code Generator in UI**: Built-in interactive code showcase in the Dashboard with 1-click copy for **cURL (OpenAI & Anthropic)**, **Python SDK**, **Node.js SDK**, **Claude Code CLI**, **Cursor/Windsurf**, and **OpenClaw/LibreChat**.
+* 📎 **Multimodal File Attachments**: Supports code files, text, and images via standard API payloads.
+* 🖥️ **Built-in Web Playground & Dashboard**: Test prompts directly in the browser at `http://localhost:3456/chat` (with quick-access `⚡ API Snippets` modal) or monitor session health at `http://localhost:3456`.
+* 🔍 **Zero Friction Auto-Login Detection**: Scans pre-existing Chrome tabs on startup; if you are already logged into Gemini or Claude in Chrome, the bridge activates immediately.
 
-
-| Feature                | Description                                                                            |
-| ---------------------- | -------------------------------------------------------------------------------------- |
-| 🔌 **11 Providers**    | Claude, ChatGPT, DeepSeek, Kimi, Qwen, GLM, Grok, Gemini, Perplexity, Doubao, Xiaomimo |
-| 🔄 **Dual API Format** | OpenAI (`/v1/chat/completions`) + Anthropic (`/v1/messages`)                           |
-| 🖥️ **Web Dashboard**  | Visual management — login, status, one-click API URL copy                              |
-| 🚀 **One Command**     | `npx web-model-bridge` — auto environment check, auto open Dashboard                   |
-| 🔒 **Secure**          | Localhost-only by default, optional Bearer token, browser-isolated cookies             |
-| 💻 **Cross-Platform**  | macOS, Linux, Windows                                                                  |
-| 🎯 **Zero Config**     | Works out of the box, optional YAML config for customization                           |
-
+---
 
 ## Quick Start
 
-### 1. Start the bridge
+### 1. Start the Bridge
 
 ```bash
-npx web-model-bridge
+# Clone the repository
+git clone https://github.com/rajitcode-jpg/web-model-bridge.git
+cd web-model-bridge
+
+# Install dependencies and start
+npm install
+npm start
 ```
 
-This will:
+On startup, web-model-bridge will:
+1. Verify Google Chrome is available.
+2. Connect to Chrome with remote debugging (or auto-launch a dedicated Chrome instance).
+3. Auto-detect any providers where you are already signed in.
+4. Open the **Command Center Dashboard** at `http://localhost:3456`.
 
-- ✓ Check your environment (Node.js, Chrome)
-- ✓ Start HTTP server on port 3456
-- ✓ Open Dashboard in your browser
+### 2. Authenticate Providers
 
-### 2. Login to AI providers
+In the Dashboard ([http://localhost:3456](http://localhost:3456)), simply click **Login** next to any unauthenticated provider. A browser window opens for you to log in normally. The bridge automatically captures and preserves your active session.
 
-In the Dashboard ([http://localhost:3456](http://localhost:3456)), click **Login** next to any provider. A browser window opens — log in as you normally would. Done.
+### 3. Copy API Implementation Code Directly from the UI
 
-### 3. Connect your AI tool
+In the Dashboard's **API Code Implementation** section (or clicking `⚡ API Snippets` inside the Chat Studio):
+1. Select your target model (e.g. `deepseek`, `claude`, `gemini`, `chatgpt`).
+2. Click your preferred tool/language tab (`cURL`, `Python`, `Node.js`, `Claude CLI`, `Cursor`, `OpenClaw`).
+3. Click **Copy Code** for ready-to-run code tailored directly to your local instance!
 
-**OpenClaw** — Add to `~/.openclaw/openclaw.json`:
+---
+
+## Supported Models
+
+You can use either the full canonical ID or the convenient short alias:
+
+| Short Alias | Canonical Model ID | Context Window | Web Platform |
+|---|---|---|---|
+| `claude` | `claude-web/claude-sonnet-4-6` | 1,000,000 | claude.ai |
+| `claude` | `claude-web/claude-haiku-4-5` | 200,000 | claude.ai |
+| `chatgpt` | `chatgpt-web/gpt-5.4-mini` | 128,000 | chatgpt.com |
+| `chatgpt` | `chatgpt-web/gpt-5.3` | 128,000 | chatgpt.com |
+| `chatgpt` | `chatgpt-web/gpt-4o` | 128,000 | chatgpt.com |
+| `deepseek` | `deepseek-web/deepseek-v4` | 128,000 | chat.deepseek.com |
+| `deepseek` | `deepseek-web/deepseek-v4-reasoner` | 128,000 | chat.deepseek.com |
+| `gemini` | `gemini-web/gemini-3-flash` | 1,000,000 | gemini.google.com |
+| `gemini` | `gemini-web/gemini-2.5-pro` | 1,000,000 | gemini.google.com |
+| `grok` | `grok-web/grok-3` | 128,000 | grok.com |
+| `perplexity` | `perplexity-web/sonar-pro` | 128,000 | perplexity.ai |
+| `kimi` | `kimi-web/kimi-k2.5` | 256,000 | kimi.moonshot.cn |
+| `qwen` | `qwen-web/qwen-3.5-plus` | 262,000 | chat.qwen.ai |
+| `qwen` | `qwen-web/qwq` | 32,000 | chat.qwen.ai |
+| `glm` | `glm-web/glm-5` | 128,000 | chatglm.cn |
+
+---
+
+## Connecting Your AI Tools
+
+### Claude Code CLI
+Point Claude Code directly to web-model-bridge's Anthropic endpoint:
+
+```bash
+export ANTHROPIC_BASE_URL="http://127.0.0.1:3456"
+export ANTHROPIC_API_KEY="not-needed"
+claude
+```
+
+### Cursor & Windsurf
+1. Navigate to **Settings** → **Models** (or AI Provider).
+2. Override **OpenAI Base URL**: `http://127.0.0.1:3456/v1`
+3. Set **API Key**: `not-needed`
+4. Add desired model ID (e.g. `gemini-web/gemini-3-flash` or `claude-web/claude-sonnet-4-6`).
+
+### OpenClaw & LibreChat
+Add to your model provider configuration:
 
 ```json
 {
   "models": {
-    "mode": "merge",
     "providers": {
       "webmodel": {
         "baseUrl": "http://127.0.0.1:3456/v1",
         "apiKey": "not-needed",
         "api": "openai-completions",
         "models": [
-          { "id": "deepseek-web/deepseek-v4", "name": "DeepSeek V4 (Free)", "contextWindow": 128000, "maxTokens": 8192 }
+          { "id": "gemini", "name": "Gemini 3 Flash (Free)" },
+          { "id": "deepseek", "name": "DeepSeek V4 (Free)" },
+          { "id": "claude", "name": "Claude Sonnet 4.6 (Free)" }
         ]
       }
     }
@@ -103,196 +152,201 @@ In the Dashboard ([http://localhost:3456](http://localhost:3456)), click **Login
 }
 ```
 
-**Claude Code:**
+### Python OpenAI SDK
 
-```bash
-export ANTHROPIC_BASE_URL="http://localhost:3456"
-export ANTHROPIC_API_KEY="not-needed"
-claude
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://127.0.0.1:3456/v1",
+    api_key="not-needed"
+)
+
+response = client.chat.completions.create(
+    model="gemini",
+    messages=[{"role": "user", "content": "Explain quantum computing in three sentences."}],
+    stream=True
+)
+
+for chunk in response:
+    content = chunk.choices[0].delta.content or ""
+    print(content, end="", flush=True)
 ```
 
-**Cursor:** Settings → Models → Override OpenAI Base URL → `http://localhost:3456/v1`
-
-**Any OpenAI-compatible tool:** Set base URL to `http://localhost:3456/v1`
-
-## Supported Models
-
-
-| Model ID                            | Name                 | Context | Platform          |
-| ----------------------------------- | -------------------- | ------- | ----------------- |
-| `claude-web/claude-sonnet-4-6`      | Claude Sonnet 4.6    | 1M      | claude.ai         |
-| `claude-web/claude-haiku-4-5`       | Claude Haiku 4.5     | 200K    | claude.ai         |
-| `chatgpt-web/gpt-5.3`               | GPT-5.3              | 128K    | chatgpt.com       |
-| `chatgpt-web/gpt-5.4-mini`          | GPT-5.4 Mini         | 128K    | chatgpt.com       |
-| `deepseek-web/deepseek-v4`          | DeepSeek V4          | 128K    | chat.deepseek.com |
-| `deepseek-web/deepseek-v4-reasoner` | DeepSeek V4 Reasoner | 128K    | chat.deepseek.com |
-| `kimi-web/kimi-k2.5`                | Kimi K2.5            | 256K    | kimi.moonshot.cn  |
-| `qwen-web/qwen-3.5-plus`            | Qwen 3.5 Plus        | 262K    | chat.qwen.ai      |
-| `qwen-web/qwq`                      | QwQ                  | 32K     | chat.qwen.ai      |
-| `glm-web/glm-5`                     | GLM-5                | 128K    | chatglm.cn        |
-| `grok-web/grok-3`                   | Grok 3               | 128K    | grok.com          |
-| `gemini-web/gemini-3-flash`         | Gemini 3 Flash       | 1M      | gemini.google.com |
-| `gemini-web/gemini-2.5-pro`         | Gemini 2.5 Pro       | 1M      | gemini.google.com |
-| `perplexity-web/perplexity-default` | Perplexity           | 128K    | perplexity.ai     |
-| `doubao-web/doubao-seed-2.0-pro`    | Doubao Seed 2.0 Pro  | 256K    | doubao.com        |
-| `xiaomimo-web/mimo-v2-pro`          | MiMo V2 Pro          | 1M      | xiaomimimo.com    |
-
-
-## Configuration
-
-### Command Line Options
-
-```bash
-web-model-bridge                         # Start with defaults
-web-model-bridge -p 8080                 # Custom port
-web-model-bridge --host 0.0.0.0          # Allow remote access (use with --auth-token)
-web-model-bridge --auth-token mysecret   # Require Bearer token
-web-model-bridge --no-open               # Don't auto-open browser
-web-model-bridge -v                      # Verbose logging (shows environment check)
-```
-
-### Config File
-
-`~/.webmodel/config.yml`:
-
-```yaml
-server:
-  port: 3456
-  host: 127.0.0.1
-  authToken: null
-
-browser:
-  idleShutdown: 300    # Close Chrome after 5 min idle
-
-providers:
-  enabled:             # Enable only what you need
-    - claude-web
-    - deepseek-web
-    - qwen-web
-
-logging:
-  level: info
-```
+---
 
 ## API Reference
 
-### OpenAI Format
+### OpenAI Format (`/v1/chat/completions`)
 
 ```bash
-curl http://localhost:3456/v1/chat/completions \
+curl http://127.0.0.1:3456/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "deepseek-web/deepseek-v4",
-    "messages": [{"role": "user", "content": "Hello"}],
+    "messages": [
+      {"role": "system", "content": "You are a concise engineering assistant."},
+      {"role": "user", "content": "What is the difference between a process and a thread?"}
+    ],
     "stream": true
   }'
 ```
 
-### Anthropic Format
+### Anthropic Format (`/v1/messages`)
 
 ```bash
-curl http://localhost:3456/v1/messages \
+curl http://127.0.0.1:3456/v1/messages \
   -H "Content-Type: application/json" \
   -H "x-api-key: not-needed" \
   -H "anthropic-version: 2023-06-01" \
   -d '{
     "model": "claude-web/claude-sonnet-4-6",
     "max_tokens": 1024,
-    "messages": [{"role": "user", "content": "Hello"}]
+    "messages": [
+      {"role": "user", "content": "Summarize the architectural advantages of microkernels."}
+    ],
+    "stream": true
   }'
 ```
 
-### Management Endpoints
+### Model Discovery (`/v1/models`)
 
+```bash
+# Get high-level provider catalog
+curl http://127.0.0.1:3456/v1/models?mode=providers
 
-| Endpoint                | Method | Description               |
-| ----------------------- | ------ | ------------------------- |
-| `/`                     | GET    | Web Dashboard             |
-| `/v1/chat/completions`  | POST   | OpenAI-compatible chat    |
-| `/v1/messages`          | POST   | Anthropic-compatible chat |
-| `/v1/models`            | GET    | List available models     |
-| `/webmodel/providers`   | GET    | Provider auth status      |
-| `/webmodel/health`      | GET    | Server health check       |
-| `/webmodel/auth/login`  | POST   | Trigger provider login    |
-| `/webmodel/auth/logout` | POST   | Clear provider auth       |
-
-
-## Architecture
-
-```
-┌──────────────────────────────┐
-│  AI Tools (OpenClaw, Claude  │
-│  Code, Cursor, Open WebUI)   │
-└──────────┬───────────────────┘
-           │ HTTP
-           ▼
-┌──────────────────────────────┐
-│  web-model-bridge            │
-│  ┌────────────────────────┐  │
-│  │ HTTP Layer             │  │
-│  │ OpenAI + Anthropic API │  │
-│  └───────────┬────────────┘  │
-│  ┌───────────▼────────────┐  │
-│  │ Core Layer             │  │
-│  │ Registry + SSE Stream  │  │
-│  └───────────┬────────────┘  │
-│  ┌───────────▼────────────┐  │
-│  │ Infra Layer            │  │
-│  │ Chrome + Auth + Config │  │
-│  └────────────────────────┘  │
-└──────────┬───────────────────┘
-           │ CDP
-           ▼
-┌──────────────────────────────┐
-│  Chrome (silent, background) │
-│  Logged into AI websites     │
-└──────────────────────────────┘
+# Get granular model catalog
+curl http://127.0.0.1:3456/v1/models?mode=models
 ```
 
-## Troubleshooting
+---
 
+## Architecture & Internals
 
-| Problem                      | Solution                                                   |
-| ---------------------------- | ---------------------------------------------------------- |
-| "Chrome not found"           | Install Google Chrome. Run with `-v` to see detected paths |
-| "Browser not connected"      | Chrome may have crashed. Restart web-model-bridge          |
-| Cookie expired               | Click **Re-login** in Dashboard — no restart needed        |
-| Port 3456 in use             | Use `-p 8080` or any free port                             |
-| Claude Code 404              | `ANTHROPIC_BASE_URL` must NOT end with `/v1`               |
-| Cursor connection fails      | Some Cursor versions require ngrok for localhost           |
-| Windows: Chrome not detected | Ensure Chrome is in default install path (Program Files)   |
+```
+┌────────────────────────────────────────────────────────┐
+│              Standard AI Clients & Tools               │
+│         (Claude Code, Cursor, OpenClaw, SDKs)          │
+└──────────────────────────┬─────────────────────────────┘
+                           │ HTTP / Server-Sent Events
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│                   web-model-bridge                     │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │ HTTP Layer (Hono): /v1/chat/completions, /v1/... │  │
+│  └───────────────────────┬──────────────────────────┘  │
+│  ┌───────────────────────▼──────────────────────────┐  │
+│  │ Router & Registry (Aliases, Pacing & Retries)    │  │
+│  └───────────────────────┬──────────────────────────┘  │
+│  ┌───────────────────────▼──────────────────────────┐  │
+│  │ Browser UI Driver (DOM Automation & Filtering)   │  │
+│  └───────────────────────┬──────────────────────────┘  │
+│  ┌───────────────────────▼──────────────────────────┐  │
+│  │ Page Pool & Mutex (Origin Isolation & Pooling)   │  │
+│  └──────────────────────────────────────────────────┘  │
+└──────────────────────────┬─────────────────────────────┘
+                           │ Chrome DevTools Protocol (CDP)
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│            Google Chrome (Active User Session)         │
+│  ┌───────────────┐ ┌───────────────┐ ┌───────────────┐ │
+│  │   Claude AI   │ │  ChatGPT Web  │ │  DeepSeek Web │ │
+│  └───────────────┘ └───────────────┘ └───────────────┘ │
+└────────────────────────────────────────────────────────┘
+```
 
+1. **Origin Partitioning**: Requests for different platforms execute in isolated browser tabs, preventing UI race conditions.
+2. **Phase Tracking**: Responses are observed via dynamic MutationObservers and custom DOM evaluators that distinguish thinking traces from finalized answers.
+3. **Graceful Degradation**: If clipboard pasting is rejected by an upstream editor, the system automatically falls back to simulated keypress typing with 12ms pacing.
+
+---
+
+## Configuration
+
+### Command Line Options
+
+```bash
+web-model-bridge                         # Default startup on 127.0.0.1:3456
+web-model-bridge -p 8080                 # Custom port
+web-model-bridge --browser-mode launch   # Launch isolated browser instead of attach
+web-model-bridge --host 0.0.0.0          # Enable LAN access (combine with --auth-token)
+web-model-bridge --auth-token secret123  # Require Bearer token for API calls
+web-model-bridge --no-open               # Disable auto-opening dashboard in browser
+```
+
+### Config File (`~/.webmodel/config.yml`)
+
+```yaml
+server:
+  port: 3456
+  host: 127.0.0.1
+  authToken: null
+  openDashboard: true
+
+browser:
+  mode: attach           # "attach" (CDP) or "launch" (persistent context)
+  cdpUrl: http://127.0.0.1:9222
+  idleShutdown: 300      # Recycle idle pages after 5 minutes
+
+providers:
+  enabled:
+    - claude-web
+    - chatgpt-web
+    - deepseek-web
+    - gemini-web
+    - grok-web
+    - perplexity-web
+    - kimi-web
+    - qwen-web
+    - glm-web
+```
+
+---
 
 ## Testing
 
-```bash
-npm test              # All tests (132 passing)
-npm run test:unit     # Unit tests only
-npm run test:integration  # Integration tests
-npm run test:coverage # Coverage report
-npm run typecheck     # TypeScript strict check
-```
-
-## Development
+web-model-bridge includes a comprehensive automated test suite:
 
 ```bash
-git clone https://github.com/linuxhsj/WebModel.git
-cd WebModel
-npm install
-npm run dev           # Start in dev mode
-npm test              # Run tests
-npm run build         # Build for distribution
+# Run complete test suite (unit + integration)
+npm test
+
+# Run unit tests only
+npm run test:unit
+
+# Run TypeScript type check
+npm run typecheck
+
+# Build bundle
+npm run build
+
+# Clear all saved session cookies and login states
+npm run clear-auth
 ```
 
-## Contributing
+### Ready-to-Run Test Clients
 
-Contributions welcome! Areas where help is needed:
+Two interactive CLI clients are included for testing completions:
 
-- 🌐 New provider adapters
-- 🧪 E2E test coverage
-- 📱 Mobile-friendly Dashboard
-- 🐳 Docker image
-- 🔧 Real upstream API endpoint discovery
+```bash
+# Python client
+python test_chat.py --model gemini --prompt "Explain quantum computing in one sentence"
+python test_chat.py --list-models
+
+# Node.js client
+node test_chat.mjs --model deepseek --prompt "Write a fibonacci function in Rust"
+node test_chat.mjs --list-models
+```
+
+---
+
+## Security & Privacy Guarantee
+
+* 🔒 **Zero Password Storage**: web-model-bridge never asks for, reads, or stores your passwords. You authenticate directly in the genuine provider web pages.
+* 🏠 **Localhost First**: Binds strictly to `127.0.0.1` by default. No data or prompts ever leave your local machine except directly to the provider's official servers.
+* 🚫 **No External Telemetry**: Zero analytics, zero cloud relay servers, and zero data harvesting.
+
+---
 
 ## License
 

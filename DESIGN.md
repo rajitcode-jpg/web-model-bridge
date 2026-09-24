@@ -1,241 +1,207 @@
-# Design System: web-model-bridge
+# System Architecture & Design Specification: web-model-bridge
 
-## 1. Visual Theme & Atmosphere
+## 1. System Overview & Architecture
 
-web-model-bridge's interface is an infrastructure control panel — quiet, focused, and technically precise. The design communicates reliability and transparency: this is a bridge you trust with your AI traffic. Inspired by Vercel's developer-tooling aesthetic but warmer, borrowing a subtle indigo accent that references the AI domain without feeling cold or corporate.
+**web-model-bridge** is a high-performance local inference bridge that converts free web-based AI interfaces into standardized, low-latency, and anti-blocking **OpenAI (`/v1/chat/completions`)** and **Anthropic (`/v1/messages`)** API endpoints.
 
-The canvas is a deep charcoal (`#09090b`) — not pure black, preserving a whisper of warmth that prevents eye fatigue during extended use. Content lives on slightly elevated surfaces (`#111113`) separated by hairline borders using the shadow-as-border technique. The overall feeling is a well-organized command center: every element has a clear purpose, nothing decorative, nothing wasted.
+By automating a genuine, user-authenticated browser engine via Chrome DevTools Protocol (CDP) or persistent Playwright contexts, the bridge completely eliminates API key costs while inheriting genuine browser security fingerprints—bypassing Cloudflare, BotGuard, and WAF restrictions that break reverse-engineered API proxies.
 
-The accent system uses a single indigo hue (`#6366f1`) for interactive elements and status indicators. Green (`#22c55e`) signals authenticated/healthy states. Red (`#ef4444`) signals errors or unauthenticated states. This three-color semantic system — indigo for action, green for success, red for attention — is the entire chromatic vocabulary.
+### High-Level System Architecture
 
-**Key Characteristics:**
-- Deep charcoal canvas (`#09090b`) with elevated card surfaces (`#111113`)
-- Single accent: Indigo (`#6366f1`) for all interactive elements
-- Shadow-as-border: `0 0 0 1px` box-shadows replace traditional borders
-- System font stack: -apple-system → Inter → sans-serif (no custom fonts needed)
-- Monospace for technical values: SF Mono → Fira Code → Consolas
-- Strict 3-color semantic: indigo (action), green (ok), red (attention)
-- 8px base spacing unit, 12px standard radius
+```mermaid
+graph TD
+    subgraph Clients["Clients & AI Developer Tools"]
+        C1[Claude Code CLI]
+        C2[Cursor / Windsurf]
+        C3[OpenClaw / LibreChat]
+        C4[Custom Scripts / SDKs]
+        C5[Built-in Chat Playground]
+    end
 
-## 2. Color Palette & Roles
+    subgraph Bridge["web-model-bridge (Local Daemon)"]
+        subgraph HTTP["HTTP / Server Layer (Hono)"]
+            R_OAI["OpenAI Router<br/>/v1/chat/completions"]
+            R_ANT["Anthropic Router<br/>/v1/messages"]
+            R_MDL["Model Discovery<br/>/v1/models"]
+            R_MGT["Management API<br/>/webmodel/*"]
+            UI["Dashboard & Chat UI<br/>/, /chat"]
+        end
 
-### Primary
-- **Canvas** (`#09090b`): Page background — deep charcoal, near-black with warmth
-- **Surface** (`#111113`): Cards, containers, elevated panels
-- **Surface Hover** (`#1a1a1f`): Hover state for interactive surfaces
+        subgraph Core["Core Orchestration"]
+            ROUTER["Inference Router<br/>(Retry / Backoff / Typing Pacing)"]
+            REGISTRY["Provider Registry<br/>(Model Resolution & Aliasing)"]
+            AUTH["Auth Store<br/>(Local Session State)"]
+            FILE["File Handler<br/>(Base64 & Multimodal Pipeline)"]
+        end
 
-### Accent
-- **Indigo** (`#6366f1`): Primary interactive — buttons, links, active states
-- **Indigo Hover** (`#818cf8`): Hover state for indigo elements
-- **Indigo Muted** (`rgba(99, 102, 241, 0.12)`): Tinted backgrounds for badges, highlights
+        subgraph Browser["Browser Driver Layer"]
+            BM["Browser Manager<br/>(CDP Attach & Persistent Contexts)"]
+            POOL["Page Pool & Domain Locking<br/>(Concurrent Tab Isolation)"]
+            DRIVER["Browser UI Driver<br/>(DOM Automation, Extraction & Error Detection)"]
+        end
+    end
 
-### Semantic
-- **Green** (`#22c55e`): Success, authenticated, healthy, active
-- **Green Muted** (`rgba(34, 197, 94, 0.15)`): Tinted background for success badges
-- **Red** (`#ef4444`): Error, unauthenticated, failed
-- **Red Muted** (`rgba(239, 68, 68, 0.12)`): Tinted background for error states
-- **Yellow** (`#eab308`): Warning, expired, attention needed
+    subgraph Targets["Web AI Platforms (9 Providers)"]
+        P1[Claude AI]
+        P2[ChatGPT]
+        P3[DeepSeek]
+        P4[Google Gemini]
+        P5[xAI Grok]
+        P6[Perplexity]
+        P7[Moonshot Kimi]
+        P8[Qwen AI]
+        P9[Zhipu GLM]
+    end
 
-### Neutrals
-- **Text Primary** (`#e4e4e7`): Headings, primary content
-- **Text Secondary** (`#a1a1aa`): Descriptions, secondary content
-- **Text Muted** (`#52525b`): Timestamps, metadata, disabled
-- **Border** (`#1f1f23`): Card borders, dividers (via shadow-as-border)
-- **Border Hover** (`#2a2a30`): Hovered borders
+    Clients -->|HTTP / SSE| HTTP
+    HTTP --> Core
+    Core --> Browser
+    BM --> POOL
+    POOL --> DRIVER
+    DRIVER -->|CDP / Playwright Automation| Targets
+```
 
-### Shadows
-- **Border Shadow**: `0 0 0 1px #1f1f23` — replaces all traditional borders
-- **Card Shadow**: `0 0 0 1px #1f1f23, 0 2px 4px rgba(0,0,0,0.2)`
-- **Elevated Shadow**: `0 0 0 1px #1f1f23, 0 4px 12px rgba(0,0,0,0.3)` — modals, dropdowns
+---
 
-## 3. Typography Rules
+## 2. Core Architectural Principles & Subsystems
 
-### Font Families
-- **Primary**: `-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif`
-- **Monospace**: `'SF Mono', 'Fira Code', 'Consolas', 'Liberation Mono', monospace`
+### 2.1 Browser Engine & Context Isolation
+* **Dual Execution Modes**:
+  * **Attach Mode (Default, Recommended)**: Connects to an existing user Google Chrome instance running with `--remote-debugging-port=9222`. Zero overhead, instant startup, and automatic reuse of existing logged-in sessions. If Chrome is not running, the bridge auto-launches a dedicated Chrome instance.
+  * **Launch Mode**: Launches an isolated Playwright persistent browser context in a dedicated local directory for headless or server-grade deployments.
+* **Auto-Discovery of Active Sessions**:
+  * On startup, the `BrowserManager` scans Chrome cookies and open tabs to detect pre-authenticated providers (e.g. Gemini, ChatGPT, Claude) without requiring manual login button clicks.
+* **Page Pooling & Concurrency Locking**:
+  * Pages are managed in an origin-partitioned pool (`Map<string, Page[]>`).
+  * Incoming concurrent requests to the same or different providers acquire an idle page or spawn a new tab on-demand, preventing cross-request prompt contamination while maintaining high throughput.
+  * A central `idleShutdown` timer recycles unused pages after 5 minutes of inactivity to keep RAM usage minimal (~300–500 MB).
 
-### Hierarchy
+### 2.2 Intelligent Extraction & Anti-Blocking Driver (`BrowserUIDriver`)
+* **Thinking & Reasoning Suppression**:
+  * Advanced models (such as Qwen 2.5/QwQ, DeepSeek V3/R1, GLM-4, and Kimi K2.5) generate internal thought traces (`<think>`, `.qwen-chat-thinking-tool-status-card-wraper`, etc.).
+  * The driver monitors generation phase transitions, strictly suppressing thinking blocks and streaming exclusively clean, finalized assistant answer prose.
+* **In-Page Error Intelligence (`detectPageError`)**:
+  * Real-time DOM inspection detects upstream toast banners, modal alerts, usage quotas, capacity limits, session timeouts, and rate limits across both English and Chinese error strings.
+  * Instead of hanging or timing out over 90 seconds, queries that hit limits immediately terminate with structured error events and client error scenes.
+* **Typing Delay & Human Pacing Fallback**:
+  * Certain modern web text inputs (Lexical, ProseMirror, Slate) intercept instant clipboard pasting.
+  * The router features an automated retry pipeline: if an initial prompt is not acknowledged, it automatically falls back to an incremental keyboard typing pacing (12ms delay) ensuring 100% input reliability.
+* **Multimodal File & Attachment Pipeline**:
+  * Validates and prepares images, code files, and documents directly onto local disk.
+  * Directly drives provider file input elements (`input[type="file"]`), verifying file attachment chips prior to dispatching prompts.
 
-| Role | Size | Weight | Line Height | Letter Spacing | Use |
-|------|------|--------|-------------|----------------|-----|
-| Page Title | 18px | 600 | 1.3 | -0.02em | Dashboard header, section titles |
-| Section Heading | 13px | 600 | 1.3 | 0.05em | Card headers (uppercase) |
-| Body | 14px | 400 | 1.5 | normal | Descriptions, provider names |
-| Body Medium | 14px | 500 | 1.5 | normal | Interactive text, nav items |
-| Code / URL | 14px (mono) | 400 | 1.5 | normal | API URLs, model IDs |
-| Label | 12px | 500 | 1.3 | 0.03em | Status labels, badges |
-| Caption | 11px | 400 | 1.3 | 0.02em | Hints, footnotes, metadata |
+---
 
-### Principles
-- **Compact, not cramped**: 14px base size with 1.5 line-height keeps the interface dense but readable
-- **Weight for hierarchy, not size**: Headings use 600 weight at the same or slightly larger sizes — hierarchy comes from weight and caps, not dramatic size jumps
-- **Monospace for values**: Any technical value (URLs, model IDs, status codes) uses the mono stack
-- **Uppercase for section labels**: Card headers use uppercase + letter-spacing as a structural marker
+## 3. API & Protocol Specifications
 
-## 4. Component Stylings
+### 3.1 Universal API Endpoints
 
-### Buttons
+| Endpoint | Method | Protocol | Format | Description |
+|---|---|---|---|---|
+| `/v1/chat/completions` | POST | HTTP / SSE | OpenAI ChatML | Universal chat endpoint supporting streaming and non-streaming |
+| `/v1/messages` | POST | HTTP / SSE | Anthropic Messages | Anthropic-compatible chat endpoint (Claude Code, Claude Desktop) |
+| `/v1/models` | GET | JSON | OpenAI Model List | Enumerates available models or top-level provider catalog |
+| `/` | GET | HTML | Web UI | Control Panel & Configuration Dashboard |
+| `/chat` | GET | HTML | Web UI | Built-in Interactive Web Chat Playground |
+| `/webmodel/providers` | GET | JSON | Internal | Returns real-time authentication and model status |
+| `/webmodel/auth/login` | POST | JSON | Internal | Initiates background browser tab login for a provider |
+| `/webmodel/auth/logout` | POST | JSON | Internal | Clears local session record for a provider |
+| `/webmodel/health` | GET | JSON | Internal | Service uptime, memory metrics, and browser connectivity |
 
-**Primary (Indigo)**
-- Background: `#6366f1`
-- Text: `#ffffff`
-- Padding: 6px 16px
-- Radius: 8px
-- Hover: `#818cf8`
-- Transition: `background 0.15s ease`
-- Use: Primary actions (Copy, Login)
+### 3.2 Model Aliasing & Discovery
+Clients can request models using either canonical identifiers or convenient short aliases:
+* `gemini` → `gemini-web/gemini-3-flash`
+* `chatgpt` → `chatgpt-web/gpt-5.4-mini`
+* `claude` → `claude-web/claude-sonnet-4-6`
+* `deepseek` → `deepseek-web/deepseek-v4`
+* `qwen` → `qwen-web/qwen-3.5-plus`
+* `grok` → `grok-web/grok-3`
+* `kimi` → `kimi-web/kimi-k2.5`
+* `glm` → `glm-web/glm-5`
+* `perplexity` → `perplexity-web/sonar-pro`
 
-**Ghost (Outline)**
-- Background: `transparent`
-- Text: `#6366f1`
-- Border: `1px solid #6366f1`
-- Padding: 5px 14px
-- Radius: 8px
-- Hover: background `#6366f1`, text `#ffffff`
-- Transition: `all 0.15s ease`
-- Use: Secondary actions (Login buttons on provider rows)
+---
 
-**Danger**
-- Background: `transparent`
-- Text: `#ef4444`
-- Border: `1px solid #ef4444`
-- Hover: background `#ef4444`, text `#ffffff`
-- Use: Destructive actions (Logout)
+## 4. Visual Design System (Dashboard & Playground)
 
-### Cards
-- Background: `#111113`
-- Border: via shadow `0 0 0 1px #1f1f23`
-- Radius: 12px
-- Header: 16px padding, bottom border via `1px solid #1f1f23`
-- Body: 20px padding
-- Header text: 13px, weight 600, uppercase, letter-spacing 0.05em, color `#e4e4e7`
+### 4.1 Atmosphere & Aesthetic
+The web-model-bridge interface is an infrastructure control panel — quiet, focused, and technically precise.
+* **Deep Charcoal Canvas (`#09090b`)**: Minimizes eye fatigue during extended development sessions.
+* **Elevated Surfaces (`#111113`)**: Content lives on slightly elevated surfaces separated by hairline borders using the shadow-as-border technique.
+* **Single Accent (Indigo `#6366f1`)**: Reserved strictly for interactive elements, status indicators, and active states.
+* **Semantic Signals**: Green (`#22c55e`) for authenticated/healthy states, Red (`#ef4444`) for errors/unauthenticated states, Yellow (`#eab308`) for warnings.
 
-### Status Indicators
-- Shape: 8px circle
-- Active: `#22c55e` with `box-shadow: 0 0 8px rgba(34, 197, 94, 0.4)` glow
-- Inactive: `#ef4444` with 0.7 opacity
-- Expired: `#eab308`
-- Pulse animation on active: `opacity 1 → 0.5 → 1` over 2s
+### 4.2 Color Palette Tokens
 
-### URL Display Box
-- Background: `#09090b` (canvas, recessed from card surface)
-- Border: `1px solid #1f1f23`
-- Radius: 8px
-- Padding: 10px 14px
-- Text: monospace, `#6366f1` (indigo for emphasis)
-- Layout: flex row, code left, copy button right
-- `user-select: all` on the code element for easy selection
+```css
+/* Surfaces */
+--bg-canvas:        #09090b;
+--bg-surface:       #111113;
+--bg-surface-hover: #1a1a1f;
+--bg-recessed:      #09090b;
 
-### Provider Row
-- Layout: flex row, space-between
-- Padding: 14px 0
-- Bottom border: `1px solid #1f1f23` (last-child: none)
-- Left: status dot + name (14px, 500) + id (12px, muted)
-- Right: model badge or login button
-- No hover background change (rows are informational, not clickable)
+/* Accents */
+--accent-indigo:       #6366f1;
+--accent-indigo-hover: #818cf8;
+--accent-indigo-muted: rgba(99, 102, 241, 0.12);
 
-### Model Badge
-- Background: `rgba(99, 102, 241, 0.12)` (indigo muted)
-- Text: `#a1a1aa` (secondary)
-- Padding: 2px 10px
-- Radius: 6px
-- Font: 12px, weight 500
+/* Semantics */
+--color-success:       #22c55e;
+--color-success-muted: rgba(34, 197, 94, 0.15);
+--color-error:         #ef4444;
+--color-error-muted:   rgba(239, 68, 68, 0.12);
+--color-warning:       #eab308;
 
-### Toast Notification
-- Position: fixed, bottom-right (24px offset)
-- Background: `#6366f1` (indigo)
-- Text: `#ffffff`
-- Padding: 10px 20px
-- Radius: 8px
-- Shadow: `0 4px 12px rgba(0,0,0,0.3)`
-- Animation: fade-in + slide-up (translateY 10px → 0), 0.3s ease
-- Auto-dismiss: 2 seconds
+/* Typography */
+--text-primary:   #e4e4e7;
+--text-secondary: #a1a1aa;
+--text-muted:     #52525b;
 
-### Stats Grid
-- 3-column grid (2-column on mobile < 640px)
-- Item: card-like with `#09090b` background, `1px solid #1f1f23` border, 12px padding
-- Label: 11px, uppercase, muted, letter-spacing 0.05em
-- Value: 22px, weight 700
-- Green value: `#22c55e` (for "healthy" status)
+/* Borders & Shadows */
+--border-color:       #1f1f23;
+--border-shadow:      0 0 0 1px #1f1f23;
+--card-shadow:        0 0 0 1px #1f1f23, 0 2px 4px rgba(0, 0, 0, 0.2);
+--elevated-shadow:    0 0 0 1px #1f1f23, 0 4px 12px rgba(0, 0, 0, 0.3);
+```
 
-## 5. Layout Principles
+### 4.3 Typography Hierarchy
 
-### Spacing Scale (8px base)
-- 4px: tight internal padding
-- 8px: icon gaps, tight margins
-- 12px: standard internal padding
-- 16px: card header/body padding
-- 20px: card body padding, section gaps
-- 24px: container horizontal padding, toast offset
-- 32px: between major sections
+| Role | Size | Weight | Line Height | Letter Spacing | Font Family |
+|---|---|---|---|---|---|
+| **Page Title** | 18px | 600 | 1.3 | -0.02em | System Sans |
+| **Section Heading**| 13px | 600 | 1.3 | 0.05em | System Sans (Uppercase) |
+| **Body** | 14px | 400 | 1.5 | normal | System Sans |
+| **Code / URL / Tokens**| 13px | 400 | 1.5 | normal | SF Mono / Consolas |
+| **Badges / Status**| 11px | 500 | 1.3 | 0.03em | System Sans |
 
-### Container
-- Max-width: 800px
-- Centered with auto margins
-- Horizontal padding: 20px (12px on mobile)
+### 4.4 API Code Implementation Showcase Component
+The Dashboard and Chat Studio feature an interactive, developer-centric code showcase:
+* **Interactive Tool / Language Tabs**:
+  * `cURL (OpenAI)`: Standard streaming `/v1/chat/completions` request.
+  * `cURL (Anthropic)`: Standard streaming `/v1/messages` request with `x-api-key`.
+  * `Python (OpenAI SDK)`: Complete, runnable script streaming chunks from `client.chat.completions.create`.
+  * `Node.js (OpenAI SDK)`: Native async-iterable stream consumer using `OpenAI` client.
+  * `Claude Code CLI`: Ready-to-paste shell exports for `ANTHROPIC_BASE_URL` and `ANTHROPIC_API_KEY`.
+  * `Cursor / Windsurf`: Custom model endpoint configuration JSON.
+  * `OpenClaw / LibreChat`: Provider configuration block for direct integration.
+* **Dynamic Model Binding**:
+  * Selecting any of the 9 supported models automatically updates the snippet's model identifier, prompt context, and canonical fallback.
+* **One-Click Clipboard Copying**:
+  * Copy button copies the exact snippet and triggers immediate visual feedback ("✓ Copied!") and toast confirmation.
+* **Dual UI Surface**:
+  * **Dashboard**: Full-width card with multi-language tabs and model dropdown.
+  * **Chat Studio**: Topbar `⚡ API Snippets` action opening an in-page modal synchronized to the active playground model.
 
-### Page Structure
-- Sticky top bar: surface background, bottom border, 56px height
-- Main content: vertical card stack with 20px gaps
-- Footer: centered, muted text, top border
+---
 
-### Responsive Breakpoints
-- **Desktop** (> 640px): 3-column stats grid, full padding
-- **Mobile** (≤ 640px): 2-column stats grid, reduced padding (12px container, 12px topbar)
+## 5. Security & Isolation Architecture
 
-## 6. Depth & Elevation
-
-### Layer System
-1. **Canvas** (`#09090b`): Page background, recessed surfaces (URL boxes, stat items)
-2. **Surface** (`#111113`): Cards, top bar — primary content layer
-3. **Elevated** (`#1a1a1f`): Hover states, dropdowns, modals
-4. **Overlay**: Toast notifications (indigo background, strong shadow)
-
-### Shadow Strategy
-- **No visible drop shadows on cards** — depth comes from surface color difference alone
-- **Shadow-as-border** (`0 0 0 1px`) for all containment — cleaner than CSS borders
-- **Glow on status indicators** — the only "decorative" shadow, used for alive/active feedback
-- **Toast shadow** — strong shadow for floating overlay elements
-
-## 7. Do's and Don'ts
-
-### Do
-- Use shadow-as-border (`box-shadow: 0 0 0 1px`) instead of `border`
-- Use indigo only for interactive elements — never for decoration
-- Use monospace font for any technical value the user might copy
-- Keep status indicators consistent: green=ok, red=bad, yellow=warning
-- Use uppercase + letter-spacing for section headers
-
-### Don't
-- Don't use more than 3 semantic colors (indigo, green, red + yellow for warnings)
-- Don't add gradients — depth comes from surface layering
-- Don't use font sizes larger than 18px — this is a utility interface, not a marketing page
-- Don't use opacity below 0.7 for text — maintain readability
-- Don't animate anything except status pulse and toast appearance
-- Don't use rounded corners larger than 12px
-
-## 8. Responsive Behavior
-
-### Breakpoint: 640px
-
-| Element | Desktop | Mobile |
-|---------|---------|--------|
-| Stats grid | 3 columns | 2 columns |
-| Container padding | 20px | 12px |
-| Topbar padding | 16px 24px | 12px 16px |
-| Card padding | 20px | 16px |
-
-### Touch Targets
-- Minimum button size: 36px height
-- Provider login button: 32px height (acceptable — finger-friendly padding from row)
-- Copy button: 30px height (within URL box, generous click area)
-
-## 9. Agent Prompt Guide
-
-**Quick color references:**
-- Background: `#09090b`, Surface: `#111113`, Border: `#1f1f23`
-- Accent: `#6366f1`, Success: `#22c55e`, Error: `#ef4444`
-- Text: `#e4e4e7`, Secondary: `#a1a1aa`, Muted: `#52525b`
-
-**Ready-to-use prompt:**
-"Build a dark-theme dashboard page following DESIGN.md. Use the canvas/surface/border color system. Cards have 12px radius with shadow-as-border (0 0 0 1px #1f1f23). Buttons are 8px radius, indigo (#6366f1) for primary. Status dots are 8px circles: green (#22c55e) with glow for active, red (#ef4444) for inactive. Monospace font for URLs and technical values. 800px max-width container. System font stack."
+1. **Zero Credential Ingestion**:
+   - The bridge never prompts for, reads, or stores plaintext user passwords.
+   - Authentication is performed entirely by the user in the genuine web interface. The bridge only monitors the presence of session cookies or authenticated UI roots.
+2. **Localhost Binding & Access Control**:
+   - By default, the bridge binds strictly to `127.0.0.1`.
+   - An optional Bearer token (`--auth-token <secret>`) protects all API endpoints when binding to public network interfaces.
+3. **Data Privacy**:
+   - Conversations, files, and tokens reside solely within the local Chrome browser session and the user's local machine.
+   - No external telemetry, tracking, or cloud proxy servers are utilized.

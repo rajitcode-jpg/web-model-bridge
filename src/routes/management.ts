@@ -7,9 +7,10 @@ import type { MetricsCollector } from '../core/metrics.js';
 export interface ManagementDeps {
   registry: ProviderRegistry;
   authStore: AuthStore;
-  onLogin?: (providerId: string) => Promise<{ status: string; message: string }>;
-  getLoginState?: () => LoginState;
+  onLogin?: (providerId: string) => Promise<{ status: string; message: string; loginUrl?: string }>;
+  getLoginState?: (providerId?: string) => LoginState;
   getBrowserStatus?: () => BrowserStatus;
+  scanActiveSessions?: () => Promise<string[]>;
   startTime?: number;
   metrics?: MetricsCollector;
 }
@@ -20,6 +21,18 @@ export function managementRoutes(deps: ManagementDeps): Hono {
   const app = new Hono();
 
   app.get('/webmodel/providers', async (c) => {
+    if (deps.scanActiveSessions) {
+      try {
+        const activeIds = await deps.scanActiveSessions();
+        for (const id of activeIds) {
+          if (authStore.getStatus(id).status !== 'active') {
+            authStore.setStatus(id, 'active');
+          }
+        }
+      } catch {
+        // Non-blocking scan
+      }
+    }
     const statuses = await registry.providerStatus();
     return c.json({ providers: statuses });
   });
@@ -46,7 +59,10 @@ export function managementRoutes(deps: ManagementDeps): Hono {
     try {
       // This returns immediately — login happens in background
       const result = await onLogin(body.providerId);
-      return c.json(result);
+      return c.json({
+        ...result,
+        loginUrl: result.loginUrl || provider.info.loginUrl,
+      });
     } catch (err) {
       return c.json({
         status: 'error',
@@ -55,12 +71,13 @@ export function managementRoutes(deps: ManagementDeps): Hono {
     }
   });
 
-  // New: poll login progress
+  // Poll login progress for a specific provider or general
   app.get('/webmodel/auth/login-status', async (c) => {
+    const providerId = c.req.query('providerId');
     if (!deps.getLoginState) {
       return c.json({ providerId: null, status: 'idle', message: '' });
     }
-    return c.json(deps.getLoginState());
+    return c.json(deps.getLoginState(providerId));
   });
 
   app.post('/webmodel/auth/check', async (c) => {
@@ -83,6 +100,14 @@ export function managementRoutes(deps: ManagementDeps): Hono {
     }
     authStore.clearStatus(body.providerId);
     return c.json({ status: 'logged_out', providerId: body.providerId });
+  });
+
+  app.post('/webmodel/auth/clear-all', async (c) => {
+    const all = authStore.getAllStatuses();
+    for (const s of all) {
+      authStore.clearStatus(s.providerId);
+    }
+    return c.json({ status: 'all_cleared', count: all.length });
   });
 
   app.get('/webmodel/health', async (c) => {

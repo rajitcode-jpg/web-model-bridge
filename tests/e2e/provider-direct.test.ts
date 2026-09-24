@@ -8,7 +8,6 @@ import { AuthStore } from '../../src/auth/store.js';
 import { DeepSeekProvider } from '../../src/providers/deepseek/index.js';
 import { ClaudeProvider } from '../../src/providers/claude/index.js';
 import { QwenProvider } from '../../src/providers/qwen-web/index.js';
-import { DoubaoProvider } from '../../src/providers/doubao-web/index.js';
 import type { StreamEvent } from '../../src/core/stream.js';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -143,31 +142,4 @@ describe('Direct: Qwen', () => {
   }, 120_000);
 });
 
-describe('Direct: Doubao', () => {
-  it('chat yields text_delta events', async () => {
-    const browserFetch = (url: string, init: RequestInit) => browserManager.fetchInBrowser(url, init);
-    const provider = new DoubaoProvider(authStore, browserFetch);
 
-    console.log('    auth:', await provider.isAuthenticated());
-
-    const events = await collectEvents(
-      provider.chat({
-        model: 'doubao-seed-2.0-pro',
-        messages: [{ role: 'user', content: 'Say exactly: "DIRECT_TEST_OK"' }],
-        stream: false,
-      })
-    );
-
-    console.log('    events received:', events.length);
-    for (const ev of events) {
-      if (ev.type === 'error') console.log('    ERROR:', ev.message);
-      if (ev.type === 'text_delta') console.log('    text_delta:', ev.delta.substring(0, 60));
-      if (ev.type === 'done') console.log('    done:', ev.reason);
-    }
-
-    const textEvents = events.filter(e => e.type === 'text_delta');
-    const errorEvents = events.filter(e => e.type === 'error');
-    expect(errorEvents).toHaveLength(0);
-    expect(textEvents.length).toBeGreaterThan(0);
-  }, 120_000);
-});

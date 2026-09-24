@@ -12,7 +12,7 @@ import {
   formatPing,
   streamEventToStopReason,
 } from '../core/anthropic-formatter.js';
-import { AuthRequiredError, InvalidBodyError, errorToHttpResponse } from '../core/errors.js';
+import { InvalidBodyError, AuthRequiredError, errorToHttpResponse } from '../core/errors.js';
 import type { Message } from '../core/provider.js';
 
 export function anthropicRoutes(registry: ProviderRegistry): Hono {
@@ -97,6 +97,10 @@ export function anthropicRoutes(registry: ProviderRegistry): Hono {
               await s.write(formatContentBlockDelta(0, event.delta));
             } else if (event.type === 'thinking_delta') {
               await s.write(formatContentBlockDelta(0, event.delta));
+            } else if (event.type === 'error') {
+              await s.write(formatContentBlockDelta(0, `\n\nError: ${event.message}`));
+              stopReason = 'error';
+              break;
             } else if (event.type === 'done') {
               stopReason = streamEventToStopReason(event) ?? 'end_turn';
             }

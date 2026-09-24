@@ -21,8 +21,6 @@ import { GLMProvider } from '../../src/providers/glm-web/index.js';
 import { GrokProvider } from '../../src/providers/grok-web/index.js';
 import { GeminiProvider } from '../../src/providers/gemini-web/index.js';
 import { PerplexityProvider } from '../../src/providers/perplexity-web/index.js';
-import { DoubaoProvider } from '../../src/providers/doubao-web/index.js';
-import { XiaomimoProvider } from '../../src/providers/xiaomimo-web/index.js';
 import { mkdirSync, rmSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -166,8 +164,6 @@ beforeAll(async () => {
   registry.register(new GrokProvider(authStore, browserFetch));
   registry.register(new GeminiProvider(authStore, browserFetch));
   registry.register(new PerplexityProvider(authStore, browserFetch));
-  registry.register(new DoubaoProvider(authStore, browserFetch, getPage));
-  registry.register(new XiaomimoProvider(authStore, browserFetch));
 
   // Start server
   const app = createApp({ registry, authStore, authToken: null });
@@ -317,21 +313,7 @@ describe('E2E: GLM', () => {
   }, CHAT_TIMEOUT);
 });
 
-describe('E2E: Doubao', () => {
-  it('non-streaming chat', async () => {
-    if (skipIfNotAuth('doubao-web')) return;
-    const res = await chatCompletion('doubao-web/doubao-seed-2.0-pro', 'Reply with exactly: "E2E_OK"', false);
-    console.log(`    status: ${res.status}`);
-    if (res.status !== 200) {
-      const body = await res.json();
-      console.log(`    error: ${JSON.stringify(body.error)}`);
-    }
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.choices[0].message.content.length).toBeGreaterThan(0);
-    console.log(`    response: ${body.choices[0].message.content.substring(0, 80)}`);
-  }, CHAT_TIMEOUT);
-});
+
 
 describe('E2E: Kimi', () => {
   it('non-streaming chat', async () => {

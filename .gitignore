@@ -1,8 +1,85 @@
+# Dependencies
+node_modules/
+
+# Production build & bundles
+dist/
+
+# Test coverage
+coverage/
+
+# User state, session cookies, and persistent browser profiles
+.webmodel/
+chrome-profile/
+chrome-data/
+browser-data/
+user-data-dir/
+profiles/
+storage_states/
+sessions/
+session/
+
+# Playwright state & captures
+*.har
+state.json
+storageState.json
+
+# Auth credentials & local configuration
+auth.json
+*.auth.json
+credentials.json
+tokens.json
+cookies.json
+secrets.json
+config.yml
+config.yaml
+config.local.*
+.env
+.env.*
+!.env.example
+
+# Databases & local stores
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+*.ldb
+*.bak
+
+# Logs, temp files & runtime artifacts
+*.log
+logs/
+scratch/
+tmp/
+temp/
+*.pid
+
+# Screenshots & recordings (may contain session data)
+screenshots/
+recordings/
+*.webm
+*.har
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# Editor & IDE configs
+.idea/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.swp
+*.swo
+*~
+
+# Agent local plans & artifacts
 .superpowers/
 .claude/
-.env*
-node_modules/
-dist/
-coverage/
-*.log
-.DS_Store
+.gemini/
+.agents/
+implementation_plan*.md

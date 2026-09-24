@@ -54,6 +54,7 @@ export class Router {
             ...req,
             model: attempt.model,
             stream: req.stream ?? true,
+            typingDelayMs: retry > 0 ? (req.typingDelayMs ?? 12) : req.typingDelayMs,
           })) {
             if (event.type === 'error') {
               hasError = true;

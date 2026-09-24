@@ -1,9 +1,9 @@
 import { BaseProvider, type ProviderInfo, type ModelInfo, type ChatRequest, buildWebPrompt } from '../../core/provider.js';
 import type { StreamEvent } from '../../core/stream.js';
-
 import { solvePow, buildPowResponse, type DeepSeekPowChallenge } from './pow.js';
 import { DEEPSEEK_WEB_BASE_URL } from './client.js';
 import { AuthStore } from '../../auth/store.js';
+import { BrowserUIDriver } from '../../browser/ui-driver.js';
 import type { Page } from 'playwright-core';
 
 export class DeepSeekProvider extends BaseProvider {
@@ -16,16 +16,20 @@ export class DeepSeekProvider extends BaseProvider {
   };
 
   private bearerToken: string | null = null;
+  private uiDriver?: BrowserUIDriver;
 
   constructor(
-    private authStore: AuthStore,
+    public authStore: AuthStore,
     _browserFetch?: (url: string, init: RequestInit) => Promise<Response>,
     private getPage?: (origin: string) => Promise<Page>,
   ) {
     super();
+    if (this.getPage) {
+      this.uiDriver = new BrowserUIDriver(this.getPage);
+    }
   }
 
-  /** Set a bearer token for API authentication (e.g. from OpenClaw auth-profiles) */
+  /** Set a bearer token for API authentication */
   setBearerToken(token: string): void {
     this.bearerToken = token;
   }
@@ -39,13 +43,15 @@ export class DeepSeekProvider extends BaseProvider {
   }
 
   async detectLoginComplete(): Promise<boolean> {
-    return false;
+    return this.isAuthenticated();
   }
 
   async models(): Promise<ModelInfo[]> {
     return [
-      { id: 'deepseek-v4', name: 'DeepSeek V4', contextWindow: 128000, maxOutput: 8192 },
+      { id: 'deepseek-v4', name: 'DeepSeek V4 Chat', contextWindow: 128000, maxOutput: 8192 },
       { id: 'deepseek-v4-reasoner', name: 'DeepSeek V4 Reasoner', contextWindow: 128000, maxOutput: 8192 },
+      { id: 'deepseek-v3', name: 'DeepSeek V3', contextWindow: 128000, maxOutput: 8192 },
+      { id: 'deepseek-r1', name: 'DeepSeek R1 Reasoner', contextWindow: 128000, maxOutput: 8192 },
     ];
   }
 
@@ -55,18 +61,27 @@ export class DeepSeekProvider extends BaseProvider {
       return;
     }
 
+    const prompt = buildWebPrompt(req.messages);
+
+    let page: any = null;
     try {
-      const page = await this.getPage(DEEPSEEK_WEB_BASE_URL);
+      page = await this.getPage(DEEPSEEK_WEB_BASE_URL);
+
+      // Try UI Driver fallback if on web UI
+      if (this.uiDriver) {
+        let hasEmitted = false;
+        for await (const ev of this.uiDriver.chatWithDeepSeek(page, prompt, req.files, { typingDelayMs: req.typingDelayMs })) {
+          yield ev;
+          hasEmitted = true;
+        }
+        if (hasEmitted) return;
+      }
 
       // Step 1: Extract bearer token
-      // DeepSeek stores JWT in a cookie named "ds_chat_token" or via login response.
-      // Strategy: try /api/v0/users/current with cookies → intercept from page.
       let bearer = this.bearerToken;
       if (!bearer) {
-        // Primary method: Intercept request headers by reloading the page.
-        // DeepSeek's frontend JS adds the Authorization header from its own state.
         const tokenPromise = new Promise<string | null>((resolve) => {
-          const timeout = setTimeout(() => resolve(null), 10000);
+          const timeout = setTimeout(() => resolve(null), 5000);
           const handler = (request: any) => {
             const url = request.url() as string;
             if (url.includes('/api/v0/')) {
@@ -80,12 +95,17 @@ export class DeepSeekProvider extends BaseProvider {
           };
           page.on('request', handler);
         });
-        // Reload the page — DeepSeek frontend will fire API calls with Bearer token
-        await page.reload({ waitUntil: 'domcontentloaded', timeout: 12000 }).catch(() => {});
+        await page.reload({ waitUntil: 'domcontentloaded', timeout: 8000 }).catch(() => {});
         bearer = await tokenPromise;
       }
+
       if (!bearer) {
-        yield { type: 'error', message: 'DeepSeek: could not extract bearer token. Please re-login at chat.deepseek.com' };
+        // Run universal UI driver directly
+        if (this.uiDriver) {
+          yield* this.uiDriver.chatUniversal(page, DEEPSEEK_WEB_BASE_URL, prompt, req.files);
+          return;
+        }
+        yield { type: 'error', message: 'DeepSeek session error.' };
         return;
       }
 
@@ -141,7 +161,7 @@ export class DeepSeekProvider extends BaseProvider {
         return;
       }
 
-      // Step 4: Solve PoW (runs in Node.js, not browser)
+      // Step 4: Solve PoW
       const challenge = challengeResult.challenge as DeepSeekPowChallenge;
       let powResponse: string;
       try {
@@ -152,12 +172,9 @@ export class DeepSeekProvider extends BaseProvider {
         return;
       }
 
-      // Step 5: Build prompt
-      const prompt = buildWebPrompt(req.messages);
-
       const isThinking = req.model.includes('reasoner');
 
-      // Step 6: Send message with PoW header, read SSE
+      // Step 5: Send message with PoW header, read SSE
       const sseResult = await page.evaluate(async (args: {
         sessionId: string; prompt: string; powResponse: string; thinkingEnabled: boolean; bearerToken: string | null;
       }) => {
@@ -214,13 +231,6 @@ export class DeepSeekProvider extends BaseProvider {
         return;
       }
 
-
-      // Step 7: Parse SSE
-      // DeepSeek Web uses a JSON-patch SSE format:
-      //   {"p":"response/content","o":"APPEND","v":"Hello"} — append to content
-      //   {"v":"!"} — short form append (continues previous path)
-      //   {"p":"response/status","v":"FINISHED"} — status update
-      //   {"p":"response/thinking_content","o":"APPEND","v":"..."} — thinking
       const lines = (sseResult.data ?? '').split('\n');
       let lastPath = '';
       for (const line of lines) {
@@ -233,8 +243,6 @@ export class DeepSeekProvider extends BaseProvider {
 
         try {
           const parsed = JSON.parse(raw);
-
-          // Full response object (initial WIP state) — skip, wait for patches
           if (parsed?.v?.response) continue;
 
           const path = parsed.p ?? lastPath;
@@ -255,6 +263,8 @@ export class DeepSeekProvider extends BaseProvider {
 
     } catch (err) {
       yield { type: 'error', message: `DeepSeek provider error: ${(err as Error).message}` };
+    } finally {
+      page?.release?.();
     }
   }
 }

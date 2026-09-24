@@ -2,7 +2,6 @@ import { describe, it, beforeAll, afterAll } from 'vitest';
 import { BrowserManager } from '../../src/browser/manager.js';
 import { AuthStore } from '../../src/auth/store.js';
 import { DeepSeekProvider } from '../../src/providers/deepseek/index.js';
-import { DoubaoProvider } from '../../src/providers/doubao-web/index.js';
 import { QwenProvider } from '../../src/providers/qwen-web/index.js';
 import type { StreamEvent } from '../../src/core/stream.js';
 import { join } from 'node:path';
@@ -103,29 +102,7 @@ describe('DeepSeek SSE content', () => {
   }, 30_000);
 });
 
-describe('Doubao SSE content', () => {
-  it('check raw SSE response', async () => {
-    const page = await bm.getPageForOrigin('https://www.doubao.com');
-    const result = await page.evaluate(async () => {
-      const localConvId = `local_16${Date.now()}`;
-      const localMsgId = crypto.randomUUID();
-      const queryParams = 'aid=497858&device_platform=web&language=zh&pkg_type=release_version&real_aid=497858&region=CN&samantha_web=1&sys_region=CN&use_olympus_account=1&version_code=20800';
 
-      const res = await fetch(`/samantha/chat/completion?${queryParams}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream', 'Agw-js-conv': 'str' },
-        body: JSON.stringify({
-          messages: [{ content: JSON.stringify({ text: 'Say hi' }), content_type: 2001, attachments: [], references: [] }],
-          completion_option: { is_regen: false, with_suggest: true, need_create_conversation: true, launch_stage: 1, is_replace: false, is_delete: false, message_from: 0, event_id: '0' },
-          conversation_id: '0', local_conversation_id: localConvId, local_message_id: localMsgId,
-        }),
-        credentials: 'include',
-      });
-      return { status: res.status, contentType: res.headers.get('content-type'), body: (await res.text()).substring(0, 1000) };
-    });
-    console.log('  Doubao raw:', JSON.stringify(result, null, 2));
-  }, 30_000);
-});
 
 describe('Qwen API', () => {
   it('check /api/v2/chats/new response', async () => {

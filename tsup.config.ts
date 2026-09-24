@@ -15,7 +15,7 @@ export default defineConfig({
   onSuccess: async () => {
     const dashDir = join('dist', 'dashboard');
     mkdirSync(dashDir, { recursive: true });
-    for (const file of ['index.html', 'app.js', 'style.css']) {
+    for (const file of ['index.html', 'app.js', 'style.css', 'chat.html']) {
       try {
         copyFileSync(join('src', 'dashboard', file), join(dashDir, file));
       } catch {

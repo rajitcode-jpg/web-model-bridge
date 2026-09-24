@@ -41,7 +41,12 @@ export async function runDoctor(): Promise<CheckResult[]> {
   if (chromePath) {
     let versionInfo = '';
     try {
-      versionInfo = ' — ' + execSync(`"${chromePath}" --version`, { encoding: 'utf-8' }).trim();
+      if (platform() === 'win32') {
+        const out = execSync(`powershell -NoProfile -Command "(Get-Item '${chromePath}').VersionInfo.ProductVersion"`, { encoding: 'utf-8', timeout: 3000 }).trim();
+        if (out) versionInfo = ` — Google Chrome ${out}`;
+      } else {
+        versionInfo = ' — ' + execSync(`"${chromePath}" --version`, { encoding: 'utf-8', timeout: 3000 }).trim();
+      }
     } catch {
       // Version detection failed, but Chrome exists
     }

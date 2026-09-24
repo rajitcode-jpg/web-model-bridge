@@ -51,7 +51,7 @@ export function defaultConfig(stateDir: string): BridgeConfig {
       enabled: [
         'claude-web', 'chatgpt-web', 'deepseek-web',
         'kimi-web', 'qwen-web', 'glm-web', 'grok-web',
-        'gemini-web', 'perplexity-web', 'doubao-web', 'xiaomimo-web',
+        'gemini-web', 'perplexity-web',
       ],
       defaultModel: 'claude-web/claude-sonnet-4-6',
     },

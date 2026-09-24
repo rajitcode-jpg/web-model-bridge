@@ -1,9 +1,8 @@
 import { BaseProvider, type ProviderInfo, type ModelInfo, type ChatRequest, buildWebPrompt } from '../../core/provider.js';
 import type { StreamEvent } from '../../core/stream.js';
-import { normalizeStandardSSE } from '../_shared/standard-stream.js';
-import { readSSE } from '../_shared/sse-reader.js';
-import { PERPLEXITY_WEB_BASE_URL } from './client.js';
 import { AuthStore } from '../../auth/store.js';
+import type { Page } from 'playwright-core';
+import { BrowserUIDriver } from '../../browser/ui-driver.js';
 
 export class PerplexityProvider extends BaseProvider {
   readonly info: ProviderInfo = {
@@ -14,11 +13,17 @@ export class PerplexityProvider extends BaseProvider {
     needsBrowser: true,
   };
 
+  private uiDriver?: BrowserUIDriver;
+
   constructor(
-    private authStore: AuthStore,
-    private browserFetch?: (url: string, init: RequestInit) => Promise<Response>,
+    public authStore: AuthStore,
+    _browserFetch?: (url: string, init: RequestInit) => Promise<Response>,
+    private getPage?: (origin: string) => Promise<Page>,
   ) {
     super();
+    if (this.getPage) {
+      this.uiDriver = new BrowserUIDriver(this.getPage);
+    }
   }
 
   async login(context: { openUrl: (url: string) => Promise<void> }): Promise<void> {
@@ -30,7 +35,7 @@ export class PerplexityProvider extends BaseProvider {
   }
 
   async detectLoginComplete(): Promise<boolean> {
-    return false;
+    return this.isAuthenticated();
   }
 
   async models(): Promise<ModelInfo[]> {
@@ -40,21 +45,23 @@ export class PerplexityProvider extends BaseProvider {
   }
 
   async *chat(req: ChatRequest): AsyncIterable<StreamEvent> {
-    if (!this.browserFetch) {
-      yield { type: 'error', message: 'Browser not connected' };
-      return;
+    const prompt = buildWebPrompt(req.messages);
+
+    if (this.getPage && this.uiDriver) {
+      let page: any = null;
+      try {
+        page = await this.getPage('https://www.perplexity.ai');
+        yield* this.uiDriver.chatWithPerplexity(page, prompt, req.files, { typingDelayMs: req.typingDelayMs });
+        return;
+      } catch (err) {
+        console.warn('[PerplexityProvider] UI driver error:', (err as Error).message);
+        yield { type: 'error', message: `Perplexity error: ${(err as Error).message}` };
+        return;
+      } finally {
+        page?.release?.();
+      }
     }
 
-    const response = await this.browserFetch(`${PERPLEXITY_WEB_BASE_URL}/api/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: req.model,
-        messages: [{ role: 'user', content: buildWebPrompt(req.messages) }],
-        stream: true,
-      }),
-    });
-
-    yield* readSSE(response, normalizeStandardSSE);
+    yield { type: 'error', message: 'Browser not connected' };
   }
 }

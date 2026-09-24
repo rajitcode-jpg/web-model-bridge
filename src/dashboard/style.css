@@ -444,6 +444,123 @@ body {
   font-size: 13px;
 }
 
+/* ── Code Implementation Showcase ── */
+.code-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.code-select {
+  background: var(--canvas);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  padding: 5px 10px;
+  font-family: var(--font-primary);
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.code-select:hover,
+.code-select:focus {
+  border-color: var(--accent);
+}
+
+.code-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.code-tab {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.code-tab:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.code-tab.active {
+  background: var(--accent-muted);
+  color: #ffffff;
+  border-color: var(--accent);
+}
+
+.code-container {
+  background: var(--canvas);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.code-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  background: #0d0d10;
+  border-bottom: 1px solid var(--border);
+}
+
+.code-lang-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.btn-copy-code {
+  display: inline-flex;
+  align-items: center;
+  background: var(--accent);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-xs);
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.btn-copy-code:hover {
+  background: var(--accent-hover);
+}
+
+.code-pre {
+  margin: 0;
+  padding: 16px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  color: #e4e4e7;
+  tab-size: 2;
+}
+
+.code-pre code {
+  font-family: inherit;
+  white-space: pre;
+}
+
 /* ── Responsive ── */
 @media (max-width: 640px) {
   .stats-grid {

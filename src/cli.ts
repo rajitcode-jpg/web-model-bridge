@@ -16,13 +16,11 @@ import { GLMProvider } from './providers/glm-web/index.js';
 import { GrokProvider } from './providers/grok-web/index.js';
 import { GeminiProvider } from './providers/gemini-web/index.js';
 import { PerplexityProvider } from './providers/perplexity-web/index.js';
-import { DoubaoProvider } from './providers/doubao-web/index.js';
-import { XiaomimoProvider } from './providers/xiaomimo-web/index.js';
 import type { BaseProvider } from './core/provider.js';
 import { homedir, platform } from 'node:os';
 import { join } from 'node:path';
 import { mkdirSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { execSync, spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import { runDoctor, printDoctorResults, findChromePath } from './doctor.js';
 
@@ -36,8 +34,6 @@ const PROVIDER_MAP: Record<string, new (auth: AuthStore, fetch?: (url: string, i
   'grok-web': GrokProvider,
   'gemini-web': GeminiProvider,
   'perplexity-web': PerplexityProvider,
-  'doubao-web': DoubaoProvider,
-  'xiaomimo-web': XiaomimoProvider,
 };
 
 const DEFAULT_STATE_DIR = join(homedir(), '.webmodel');
@@ -105,7 +101,13 @@ async function launchChromeWithCDP(cdpPort: number, profileDir: string): Promise
     if (os === 'darwin') {
       execSync(`"${chromePath}" ${args} &>/dev/null &`, { shell: '/bin/zsh' });
     } else if (os === 'win32') {
-      execSync(`start "" "${chromePath}" ${args}`, { shell: 'cmd.exe' });
+      const child = spawn(chromePath, [
+        `--remote-debugging-port=${cdpPort}`,
+        `--user-data-dir=${profileDir}`,
+        '--no-first-run',
+        '--no-default-browser-check',
+      ], { detached: true, stdio: 'ignore' });
+      child.unref();
     } else {
       execSync(`"${chromePath}" ${args} &>/dev/null &`, { shell: '/bin/bash' });
     }
@@ -254,10 +256,10 @@ program
     const getPage = (origin: string) =>
       browserManager.getPageForOrigin(origin);
 
-    // Providers that need getPage for multi-step browser-context API calls
+    // Providers that use getPage for DOM automation or browser-context execution
     const NEEDS_GET_PAGE = new Set([
-      'claude-web', 'deepseek-web', 'qwen-web', 'doubao-web',
-      'glm-web', 'kimi-web',
+      'gemini-web', 'chatgpt-web', 'claude-web', 'deepseek-web', 'qwen-web',
+      'glm-web', 'kimi-web', 'grok-web', 'perplexity-web',
     ]);
 
     const enabled = new Set(config.providers.enabled);
@@ -271,22 +273,18 @@ program
       }
     }
 
-    // ── Step 4b: Auto-detect authenticated providers via cookies ──
-    if (browserMode === 'attach' && await checkCDP(cdpUrl)) {
+    // ── Step 4b: Auto-capture already authenticated providers from connected Chrome ──
+    if (browserMode === 'attach') {
       try {
-        const detected = await browserManager.autoDetectAuth();
-        let autoAuthCount = 0;
-        for (const [providerId, hasCookies] of Object.entries(detected)) {
-          if (hasCookies && enabled.has(providerId)) {
-            authStore.setStatus(providerId, 'active');
-            autoAuthCount++;
+        const activeIds = await browserManager.scanActiveSessions();
+        for (const id of activeIds) {
+          if (authStore.getStatus(id).status !== 'active') {
+            authStore.setStatus(id, 'active');
+            console.log(chalk.green(`  ✓ Detected existing Chrome session for ${id}`));
           }
         }
-        if (autoAuthCount > 0) {
-          console.log(chalk.green('  ✓') + ` Auto-detected ${autoAuthCount} authenticated providers from browser cookies`);
-        }
       } catch {
-        // Auto-detect failed, not critical
+        // Non-blocking background scan
       }
     }
 
@@ -296,27 +294,32 @@ program
       authStore,
       authToken: config.server.authToken,
       getBrowserStatus: () => browserManager.getStatus(),
+      scanActiveSessions: () => browserManager.scanActiveSessions(),
       onLogin: async (providerId: string) => {
         const provider = registry.getProvider(providerId);
         if (!provider) return { status: 'error', message: `Provider "${providerId}" not found.` };
 
-        await browserManager.startLogin(providerId, provider.info.loginUrl, (success) => {
+        // Do not block HTTP response — run login flow in background
+        browserManager.startLogin(providerId, provider.info.loginUrl, (success) => {
           if (success) {
             authStore.setStatus(providerId, 'active');
-            console.log(chalk.green(`  ✓ ${providerId} login completed. Cookies saved.`));
+            console.log(chalk.green(`  ✓ ${providerId} login completed. Session active.`));
           } else {
             console.log(chalk.yellow(`  ⚠ ${providerId} login did not complete.`));
           }
+        }).catch((err) => {
+          console.error(chalk.red(`  ✗ ${providerId} login error:`), err.message);
         });
 
         return {
           status: 'login_started',
+          loginUrl: provider.info.loginUrl,
           message: browserMode === 'attach'
-            ? 'A new tab opened in your Chrome. Log in and close the tab when done.'
-            : 'A Chrome window opened. Log in and close it when done.',
+            ? `A new tab opened for ${provider.info.name}. Log in and cookies will be captured automatically.`
+            : `A Chrome window opened for ${provider.info.name}. Log in and cookies will be captured automatically.`,
         };
       },
-      getLoginState: () => browserManager.getLoginState(),
+      getLoginState: (providerId?: string) => browserManager.getLoginState(providerId),
     });
 
     serve({
@@ -373,6 +376,30 @@ program
   .description('Uninstall system service')
   .action(() => {
     console.log(chalk.yellow('uninstall-service is planned for Phase 2.'));
+  });
+
+program
+  .command('clear-auth')
+  .description('Clear all saved logins, cookies, auth statuses, and browser profile')
+  .option('--state-dir <dir>', 'data directory', DEFAULT_STATE_DIR)
+  .action(async (opts) => {
+    const dir = opts.stateDir || DEFAULT_STATE_DIR;
+    const { rmSync, writeFileSync, mkdirSync, existsSync } = await import('node:fs');
+    const authFile = join(dir, 'auth.json');
+    const profile = join(dir, 'chrome-profile');
+
+    if (existsSync(authFile)) {
+      writeFileSync(authFile, JSON.stringify({}, null, 2));
+    }
+    if (existsSync(profile)) {
+      try {
+        rmSync(profile, { recursive: true, force: true });
+        mkdirSync(profile, { recursive: true });
+      } catch (err) {
+        console.warn(chalk.yellow(`  Warning: Could not remove chrome-profile: ${(err as Error).message}`));
+      }
+    }
+    console.log(chalk.green('  ✓ All logins, session cookies, and auth database state cleared.'));
   });
 
 program.parse();

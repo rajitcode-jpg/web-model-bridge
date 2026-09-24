@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { runDoctor, findChromePath } from '../../src/doctor.js';
 
-describe('Doctor', () => {
+describe('Doctor', { timeout: 15000 }, () => {
   it('returns array of check results', async () => {
     const results = await runDoctor();
     expect(Array.isArray(results)).toBe(true);

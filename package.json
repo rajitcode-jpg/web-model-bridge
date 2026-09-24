@@ -9,6 +9,8 @@
   },
   "scripts": {
     "build": "tsup",
+    "start": "node dist/cli.js",
+    "clear-auth": "node scripts/clear_auth.js",
     "dev": "tsx src/cli.ts",
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",

@@ -2,6 +2,7 @@ import { BaseProvider, type ProviderInfo, type ModelInfo, type ChatRequest, buil
 import type { StreamEvent } from '../../core/stream.js';
 import { normalizeClaudeSSE } from './stream.js';
 import { AuthStore } from '../../auth/store.js';
+import { BrowserUIDriver } from '../../browser/ui-driver.js';
 import type { Page } from 'playwright-core';
 
 const BASE_URL = 'https://claude.ai';
@@ -17,14 +18,18 @@ export class ClaudeProvider extends BaseProvider {
 
   private organizationId: string | null = null;
   private deviceId: string | null = null;
+  private uiDriver?: BrowserUIDriver;
 
   constructor(
-    private authStore: AuthStore,
+    public authStore: AuthStore,
     browserFetch?: (url: string, init: RequestInit) => Promise<Response>,
     private getPage?: (origin: string) => Promise<Page>,
   ) {
-    void browserFetch; // kept for interface compatibility with other providers
+    void browserFetch;
     super();
+    if (this.getPage) {
+      this.uiDriver = new BrowserUIDriver(this.getPage);
+    }
   }
 
   async login(context: { openUrl: (url: string) => Promise<void> }): Promise<void> {
@@ -36,12 +41,14 @@ export class ClaudeProvider extends BaseProvider {
   }
 
   async detectLoginComplete(): Promise<boolean> {
-    return false;
+    return this.isAuthenticated();
   }
 
   async models(): Promise<ModelInfo[]> {
     return [
       { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6', contextWindow: 1000000, maxOutput: 8192 },
+      { id: 'claude-3-7-sonnet', name: 'Claude 3.7 Sonnet (Hybrid Reasoning)', contextWindow: 200000, maxOutput: 8192 },
+      { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', contextWindow: 200000, maxOutput: 8192 },
       { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5', contextWindow: 200000, maxOutput: 8192 },
     ];
   }
@@ -52,8 +59,21 @@ export class ClaudeProvider extends BaseProvider {
       return;
     }
 
+    const prompt = buildWebPrompt(req.messages);
+
+    let page: any = null;
     try {
-      const page = await this.getPage(BASE_URL);
+      page = await this.getPage(BASE_URL);
+
+      // Try UI driver first for direct typing/sending on claude.ai
+      if (this.uiDriver) {
+        let emittedAny = false;
+        for await (const ev of this.uiDriver.chatWithClaude(page, prompt, req.files, { typingDelayMs: req.typingDelayMs })) {
+          yield ev;
+          emittedAny = true;
+        }
+        if (emittedAny) return;
+      }
 
       // Step 1: Get organizationId (cached)
       if (!this.organizationId) {
@@ -76,13 +96,13 @@ export class ClaudeProvider extends BaseProvider {
         }, this.deviceId ?? crypto.randomUUID());
 
         if (orgResult.error) {
-          yield { type: 'error', message: `Failed to get organizations: ${orgResult.error}` };
+          yield { type: 'error', message: `Claude API notice: ${orgResult.error}` };
           return;
         }
 
         const orgs = orgResult.orgs;
         if (!Array.isArray(orgs) || orgs.length === 0) {
-          yield { type: 'error', message: 'No organizations found. Please log in to claude.ai first.' };
+          yield { type: 'error', message: 'No organizations found in Claude session.' };
           return;
         }
         this.organizationId = orgs[0].uuid;
@@ -121,10 +141,7 @@ export class ClaudeProvider extends BaseProvider {
 
       const conversationId = convResult.conv?.uuid ?? convUuid;
 
-      // Step 3: Build prompt from messages
-      const prompt = buildWebPrompt(req.messages);
-
-      // Step 4: Send message and read SSE response
+      // Step 3: Send message and read SSE response
       const sseResult = await page.evaluate(async (args: {
         apiBase: string; orgId: string; convId: string; deviceId: string;
         prompt: string; model: string;
@@ -162,7 +179,6 @@ export class ClaudeProvider extends BaseProvider {
             return { error: `HTTP ${res.status}: ${text.substring(0, 200)}` };
           }
 
-          // Read full SSE response (buffered — streaming requires CDP interception)
           const reader = res.body?.getReader();
           if (!reader) return { error: 'No response body' };
 
@@ -187,11 +203,10 @@ export class ClaudeProvider extends BaseProvider {
       });
 
       if (sseResult.error) {
-        yield { type: 'error', message: `Claude API error: ${sseResult.error}` };
+        yield { type: 'error', message: `Claude error: ${sseResult.error}` };
         return;
       }
 
-      // Step 5: Parse SSE lines and emit StreamEvents
       const lines = (sseResult.data ?? '').split('\n');
       for (const line of lines) {
         const trimmed = line.trim();
@@ -204,6 +219,8 @@ export class ClaudeProvider extends BaseProvider {
 
     } catch (err) {
       yield { type: 'error', message: `Claude provider error: ${(err as Error).message}` };
+    } finally {
+      page?.release?.();
     }
   }
 }

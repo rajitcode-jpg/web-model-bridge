@@ -39,6 +39,14 @@ export function formatStreamChunk(
     base.choices[0].delta = isFirst
       ? { role: 'assistant', content: event.delta }
       : { content: event.delta };
+  } else if (event.type === 'error') {
+    (base as any).error = {
+      message: event.message,
+      type: 'provider_error',
+      code: 'provider_error',
+    };
+    base.choices[0].finish_reason = 'error';
+    base.choices[0].delta = {};
   }
 
   return base;

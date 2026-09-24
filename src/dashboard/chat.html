@@ -1,0 +1,1827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web Model Bridge — Chat Studio</title>
+  <link rel="stylesheet" href="/dashboard/style.css">
+  <style>
+    :root {
+      --bg: #09090b;
+      --card-bg: rgba(17, 17, 19, 0.85);
+      --card-border: #232328;
+      --card-border-hover: #3b3b44;
+      --text: #f4f4f5;
+      --text-muted: #8e8e99;
+      --accent: #6366f1;
+      --accent-hover: #818cf8;
+      --accent-glow: rgba(99, 102, 241, 0.35);
+      --accent-muted: rgba(99, 102, 241, 0.15);
+      --success: #10b981;
+      --success-glow: rgba(16, 185, 129, 0.25);
+      --error: #ef4444;
+      --warning: #f59e0b;
+      --font-mono: 'SF Mono', 'Fira Code', Consolas, monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.08) 0px, transparent 50%);
+      color: var(--text);
+      font-family: var(--font-sans);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Topbar */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 24px;
+      background: rgba(17, 17, 19, 0.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--card-border);
+      flex-shrink: 0;
+      z-index: 100;
+    }
+
+    .topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      font-size: 24px;
+      filter: drop-shadow(0 0 8px var(--accent-glow));
+    }
+
+    .brand-name {
+      font-weight: 700;
+      font-size: 17px;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #fff 40%, #a5b4fc 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-tag {
+      font-size: 11px;
+      background: var(--accent-muted);
+      color: var(--accent-hover);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      padding: 3px 8px;
+      border-radius: 9999px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 9999px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      color: #34d399;
+      font-weight: 500;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+      animation: pulse-dot 2s infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    /* App Layout */
+    .app-layout {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 57px);
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    .config-sidebar {
+      width: 320px;
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      border-right: 1px solid var(--card-border);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    .config-section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .form-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .form-control {
+      background: #141418;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      width: 100%;
+    }
+
+    .form-control:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-muted);
+    }
+
+    .form-control.mono {
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    /* Model Mode Toggle Switch */
+    .toggle-card {
+      background: #16161b;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .toggle-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .toggle-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .toggle-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.3;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #27272e;
+      transition: 0.3s;
+      border-radius: 24px;
+      border: 1px solid var(--card-border);
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--accent);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 8px var(--accent-glow);
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-cancel {
+      background: #ef4444 !important;
+      color: #fff !important;
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4) !important;
+    }
+
+    .btn-cancel:hover {
+      background: #dc2626 !important;
+    }
+
+    .btn-secondary {
+      background: #18181d;
+      border: 1px solid var(--card-border);
+      color: var(--text);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--card-border-hover);
+      background: #202027;
+    }
+
+    .btn-preset {
+      background: #18181d;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-preset:hover, .btn-preset.active {
+      color: var(--text);
+      border-color: var(--accent);
+      background: var(--accent-muted);
+    }
+
+    .port-presets {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    /* Chat Stage */
+    .chat-stage {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      background: transparent;
+      overflow: hidden;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      scroll-behavior: smooth;
+    }
+
+    /* Message Bubbles */
+    .message-row {
+      display: flex;
+      gap: 14px;
+      max-width: 85%;
+      animation: fadeIn 0.25s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message-row.user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    .message-row.assistant {
+      align-self: flex-start;
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+      background: #1e1e24;
+      border: 1px solid var(--card-border);
+    }
+
+    .message-row.user .avatar {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .message-content {
+      background: #141418;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 14px 18px;
+      font-size: 14px;
+      line-height: 1.6;
+      word-break: break-word;
+      color: var(--text);
+    }
+
+    .message-row.user .message-content {
+      background: #1f1f28;
+      border-color: rgba(99, 102, 241, 0.3);
+    }
+
+    .message-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Attachments in chat */
+    .attached-file-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #252530;
+      border: 1px solid var(--card-border-hover);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-bottom: 8px;
+      color: #a5b4fc;
+    }
+
+    /* Artifact cards */
+    .artifact-card {
+      background: #111116;
+      border: 1px solid #2d2d38;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .artifact-title {
+      font-weight: 600;
+      font-size: 12px;
+      color: #38bdf8;
+    }
+
+    /* Error Scene Card */
+    .error-scene-banner {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 10px;
+      padding: 14px;
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .error-scene-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #f87171;
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .error-scene-preview {
+      max-width: 100%;
+      border-radius: 6px;
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      max-height: 220px;
+      object-fit: cover;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .error-scene-preview:hover {
+      transform: scale(1.01);
+    }
+
+    /* Input Composer */
+    .composer-wrapper {
+      padding: 16px 28px 20px;
+      background: rgba(17, 17, 19, 0.85);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* Drag drop zone */
+    .dropzone-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(17, 17, 24, 0.9);
+      border: 2px dashed var(--accent);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      z-index: 50;
+      backdrop-filter: blur(8px);
+    }
+
+    .dropzone-overlay.active {
+      display: flex;
+    }
+
+    /* Selected files pills bar */
+    .file-preview-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .file-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #1b1b22;
+      border: 1px solid var(--card-border-hover);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #e4e4e7;
+    }
+
+    .file-pill-remove {
+      cursor: pointer;
+      color: var(--text-muted);
+      font-weight: bold;
+      transition: color 0.15s;
+    }
+
+    .file-pill-remove:hover {
+      color: #ef4444;
+    }
+
+    .composer-box {
+      background: #121216;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .composer-box:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-muted);
+    }
+
+    .composer-textarea {
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+      resize: none;
+      min-height: 54px;
+      max-height: 200px;
+      line-height: 1.5;
+    }
+
+    .composer-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 4px;
+    }
+
+    .toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-attach {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-attach:hover {
+      background: #1c1c24;
+      color: var(--text);
+      border-color: var(--card-border);
+    }
+
+    .prompt-stats {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .badge-long-doc {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #fbbf24;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 6px;
+      display: none;
+    }
+
+    /* Code block */
+    pre code {
+      display: block;
+      background: #09090d;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      overflow-x: auto;
+      margin: 10px 0;
+      color: #38bdf8;
+    }
+
+    .cursor-blink {
+      display: inline-block;
+      width: 6px;
+      height: 15px;
+      background: var(--accent-hover);
+      margin-left: 2px;
+      vertical-align: middle;
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    /* Modal for Image Preview */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-content {
+      background: #121217;
+      border: 1px solid var(--card-border-hover);
+      border-radius: 12px;
+      padding: 20px;
+      max-width: 90vw;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow: hidden;
+    }
+
+    .modal-content img {
+      max-width: 100%;
+      max-height: 75vh;
+      object-fit: contain;
+      border-radius: 6px;
+    }
+
+    .status-indicator-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+    .status-indicator-dot.green {
+      background: #10b981;
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+    }
+    .status-indicator-dot.red {
+      background: #ef4444;
+      box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <nav class="topbar">
+    <div class="topbar-brand">
+      <span class="logo">🌉</span>
+      <span class="brand-name">Web Model Bridge</span>
+      <span class="brand-tag">Hackathon Studio</span>
+    </div>
+    <div class="nav-links">
+      <button class="btn btn-secondary" id="btn-open-api-modal" style="font-size: 11px; padding: 5px 12px; display: inline-flex; align-items: center; gap: 6px; border-color: rgba(99, 102, 241, 0.4); background: rgba(99, 102, 241, 0.12); color: #a5b4fc; cursor: pointer;">⚡ API Snippets</button>
+      <a href="/" class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;">Dashboard</a>
+      <div class="status-badge" id="bridge-status">
+        <span class="status-dot"></span>
+        <span id="bridge-status-text">Bridge Ready</span>
+      </div>
+    </div>
+  </nav>
+
+  <div class="app-layout">
+    <!-- Config Sidebar -->
+    <aside class="config-sidebar">
+      <div>
+        <div class="config-section-title">
+          <span>Active Provider</span>
+        </div>
+        <div class="form-group">
+          <select id="model-select" class="form-control mono">
+            <!-- Populated dynamically via JS -->
+          </select>
+          <div id="selected-provider-auth-badge" style="margin-top: 8px; font-size: 11px; display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-radius: 6px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3);">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span class="status-indicator-dot red" id="selected-provider-dot"></span>
+              <span id="selected-provider-auth-text" style="color: #f87171; font-weight: 500;">Not Logged In</span>
+            </div>
+            <button class="btn-login-small" id="btn-login-selected" style="padding: 2px 8px; font-size: 11px; background: #6366f1; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Login</button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="config-section-title" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Provider Logins</span>
+          <span id="sidebar-auth-summary" style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">0 / 9 Active</span>
+        </div>
+        <div id="sidebar-provider-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; padding-right: 2px;">
+          <div style="font-size: 11px; color: var(--text-muted);">Loading providers...</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="config-section-title">Connection & Execution</div>
+        <div class="form-group">
+          <label class="form-label">API Base Endpoint</label>
+          <input type="text" id="api-base-url" class="form-control mono" value="http://127.0.0.1:3457/v1">
+          <div class="port-presets">
+            <button class="btn-preset active" data-url="http://127.0.0.1:3457/v1">Port 3457</button>
+            <button class="btn-preset" data-url="http://127.0.0.1:3456/v1">Port 3456</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Stream Mode</label>
+          <select id="stream-select" class="form-control mono">
+            <option value="true" selected>Streaming SSE (Live Response)</option>
+            <option value="false">Non-Streaming (Wait for Full Output)</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <div class="config-section-title">Hackathon Capabilities</div>
+        <div style="font-size: 11px; color: var(--text-muted); line-height: 1.6; background: #131318; border: 1px solid var(--card-border); border-radius: 8px; padding: 10px;">
+          ✓ <b>Zero Login Wall</b>: Instant direct browser access<br>
+          ✓ <b>Multimodal</b>: Video, Audio, Images, Documents<br>
+          ✓ <b>25k Words</b>: Auto-converts prompt to document file<br>
+          ✓ <b>Artifact Return</b>: Captures assistant-generated files<br>
+          ✓ <b>Error Scene</b>: Visual browser inspection on issue
+        </div>
+      </div>
+    </aside>
+
+    <!-- Chat Stage -->
+    <main class="chat-stage" id="chat-stage">
+      <!-- Fullscreen dropzone overlay -->
+      <div class="dropzone-overlay" id="dropzone-overlay">
+        <span style="font-size: 48px;">📂</span>
+        <h3 style="font-size: 18px; font-weight: 600;">Drop Files to Attach</h3>
+        <p style="font-size: 13px; color: var(--text-muted);">Supports Video, Audio, Images, PDF, and Documents</p>
+      </div>
+
+      <!-- Messages container -->
+      <div class="chat-messages" id="chat-messages">
+        <div class="message-row assistant">
+          <div class="avatar">🌉</div>
+          <div class="message-content">
+            <strong>Welcome to Web Model Bridge Chat Studio!</strong><br><br>
+            This hackathon project connects your local apps to web AI models (Google Gemini, ChatGPT, Claude, DeepSeek, and more) with real browser typing, multimodal uploads, and streaming.<br><br>
+            • Select any of the 9 providers from the sidebar dropdown (Google Gemini, ChatGPT, Claude, DeepSeek, Grok, Kimi, Qwen, GLM, Perplexity).<br>
+            • Attach any video, audio, image, or document file using the 📎 button or drag-and-drop.<br>
+            • Prompts exceeding 25,000 words are automatically packaged into a document attachment!
+          </div>
+        </div>
+      </div>
+
+      <!-- Composer Wrapper -->
+      <div class="composer-wrapper">
+        <!-- Attached file pills preview -->
+        <div class="file-preview-strip" id="file-preview-strip"></div>
+
+        <!-- Text input box -->
+        <div class="composer-box">
+          <textarea 
+            id="composer-input" 
+            class="composer-textarea" 
+            placeholder="Type your message, or drag and drop any video, audio, image, or document..." 
+            rows="2"></textarea>
+          
+          <div class="composer-toolbar">
+            <div class="toolbar-actions">
+              <input type="file" id="file-input" multiple style="display: none;">
+              <button class="btn-attach" id="btn-attach-file" title="Attach video, audio, image, or document">
+                <span>📎</span> Attach Files
+              </button>
+              <span class="prompt-stats" id="word-counter">0 words</span>
+              <span class="badge-long-doc" id="badge-long-doc">⚡ > 25,000 words: Auto-file enabled</span>
+            </div>
+
+            <button class="btn btn-primary" id="btn-send">
+              <span>Send</span> ➔
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal for Error Scene Zoom -->
+  <div class="modal-overlay" id="scene-modal">
+    <div class="modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="font-size: 15px; font-weight: 600; color: #f87171;">Browser Error Scene Inspector</h3>
+        <button class="btn-preset" id="btn-close-modal">✕ Close</button>
+      </div>
+      <img id="modal-scene-img" src="" alt="Browser Screenshot">
+      <div id="modal-scene-details" style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);"></div>
+    </div>
+  </div>
+
+  <!-- Modal for Login Confirmation -->
+  <div class="modal-overlay" id="login-confirm-modal">
+    <div class="modal-content" style="max-width: 440px; text-align: center; gap: 16px;">
+      <div style="font-size: 38px;">🔐</div>
+      <h3 style="font-size: 16px; font-weight: 600; color: #f87171;" id="login-modal-title">Provider Not Logged In</h3>
+      <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;" id="login-modal-desc">
+        You haven't logged into this provider yet. Would you like to log in now? We will open a browser tab for you.
+      </p>
+      <div style="display: flex; gap: 10px; justify-content: center; margin-top: 8px;">
+        <button class="btn btn-secondary" id="btn-cancel-login-modal">Cancel</button>
+        <button class="btn btn-primary" id="btn-confirm-login-modal">Log In (Enter) ➔</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for API Code Snippets -->
+  <div class="modal-overlay" id="api-snippets-modal">
+    <div class="modal-content" style="max-width: 640px; width: 95vw; gap: 14px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 16px;">⚡</span>
+          <h3 style="font-size: 15px; font-weight: 600; color: #e4e4e7;">API Code Implementation</h3>
+        </div>
+        <button class="btn-preset" id="btn-close-api-modal" style="cursor: pointer;">✕ Close</button>
+      </div>
+      <p style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">
+        Connect your external tools or code directly to the active model: <code id="modal-active-model-name" style="color: #a5b4fc; font-family: var(--font-mono); font-weight: 600;">gemini</code>
+      </p>
+      <div class="code-tabs" id="chat-modal-tabs" style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px;">
+        <button class="code-tab active" data-chat-tab="curl-openai">cURL (OpenAI)</button>
+        <button class="code-tab" data-chat-tab="curl-anthropic">cURL (Anthropic)</button>
+        <button class="code-tab" data-chat-tab="python">Python (SDK)</button>
+        <button class="code-tab" data-chat-tab="nodejs">Node.js (SDK)</button>
+      </div>
+      <div style="background: #09090b; border: 1px solid var(--card-border); border-radius: 8px; overflow: hidden;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; background: #0d0d10; border-bottom: 1px solid var(--card-border);">
+          <span id="chat-modal-lang" style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); font-weight: 600;">BASH / CURL</span>
+          <button id="btn-copy-chat-modal-code" style="display: inline-flex; align-items: center; gap: 4px; background: #6366f1; color: white; border: none; border-radius: 4px; padding: 4px 10px; font-size: 11px; font-weight: 500; cursor: pointer;">
+            <span id="btn-copy-chat-modal-text">Copy Code</span>
+          </button>
+        </div>
+        <pre style="margin: 0; padding: 14px; overflow-x: auto; font-family: var(--font-mono); font-size: 12px; line-height: 1.5; color: #e4e4e7;"><code id="chat-modal-code"></code></pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // App State
+    let activeFiles = [];
+    let isGenerating = false;
+    let currentAbortController = null;
+
+    const dom = {
+      apiBaseUrl: document.getElementById('api-base-url'),
+      modelSelect: document.getElementById('model-select'),
+      streamSelect: document.getElementById('stream-select'),
+      chatMessages: document.getElementById('chat-messages'),
+      composerInput: document.getElementById('composer-input'),
+      fileInput: document.getElementById('file-input'),
+      btnAttach: document.getElementById('btn-attach-file'),
+      filePreviewStrip: document.getElementById('file-preview-strip'),
+      wordCounter: document.getElementById('word-counter'),
+      badgeLongDoc: document.getElementById('badge-long-doc'),
+      btnSend: document.getElementById('btn-send'),
+      chatStage: document.getElementById('chat-stage'),
+      dropzoneOverlay: document.getElementById('dropzone-overlay'),
+      sceneModal: document.getElementById('scene-modal'),
+      modalSceneImg: document.getElementById('modal-scene-img'),
+      modalSceneDetails: document.getElementById('modal-scene-details'),
+      btnCloseModal: document.getElementById('btn-close-modal'),
+      bridgeStatusText: document.getElementById('bridge-status-text'),
+    };
+
+    // Provider Authentication State & Logic
+    let providersAuthMap = {};
+    let pendingProviderLogin = null;
+
+    const PROVIDER_LOGIN_URLS = {
+      'chatgpt-web': 'https://chatgpt.com/auth/login',
+      'claude-web': 'https://claude.ai/login',
+      'deepseek-web': 'https://chat.deepseek.com/sign_in',
+      'gemini-web': 'https://gemini.google.com',
+      'grok-web': 'https://grok.com',
+      'kimi-web': 'https://kimi.ai/auth',
+      'qwen-web': 'https://chat.qwen.ai/auth',
+      'glm-web': 'https://chatglm.com',
+      'perplexity-web': 'https://www.perplexity.ai',
+    };
+
+    const DEFAULT_PROVIDERS = [
+      { id: 'gemini', name: '♊ Google Gemini' },
+      { id: 'chatgpt', name: '💬 OpenAI ChatGPT' },
+      { id: 'claude', name: '🎭 Anthropic Claude' },
+      { id: 'deepseek', name: '🐋 DeepSeek' },
+      { id: 'grok', name: '⚡ xAI Grok' },
+      { id: 'kimi', name: '🌙 Moonshot Kimi' },
+      { id: 'qwen', name: '🟣 Alibaba Qwen' },
+      { id: 'glm', name: '智 Zhipu GLM' },
+      { id: 'perplexity', name: '🔍 Perplexity' },
+    ];
+
+    function getProviderIdFromModel(modelId) {
+      const clean = (modelId || '').toLowerCase();
+      if (clean.startsWith('gemini') || clean.includes('google')) return 'gemini-web';
+      if (clean.startsWith('chatgpt') || clean.includes('gpt') || clean.includes('openai') || clean.startsWith('o1') || clean.startsWith('o3')) return 'chatgpt-web';
+      if (clean.startsWith('claude') || clean.includes('anthropic')) return 'claude-web';
+      if (clean.startsWith('deepseek')) return 'deepseek-web';
+      if (clean.startsWith('grok') || clean.includes('xai')) return 'grok-web';
+      if (clean.startsWith('kimi') || clean.includes('moonshot')) return 'kimi-web';
+      if (clean.startsWith('qwen') || clean.includes('alibaba')) return 'qwen-web';
+      if (clean.startsWith('glm') || clean.includes('zhipu') || clean.includes('chatglm')) return 'glm-web';
+      if (clean.startsWith('perplexity') || clean.includes('sonar')) return 'perplexity-web';
+      return modelId.split('/')[0] || modelId;
+    }
+
+    function getProviderDisplayName(providerId) {
+      const NAMES = {
+        'gemini-web': 'Google Gemini',
+        'chatgpt-web': 'ChatGPT',
+        'claude-web': 'Anthropic Claude',
+        'deepseek-web': 'DeepSeek',
+        'grok-web': 'xAI Grok',
+        'kimi-web': 'Moonshot Kimi',
+        'qwen-web': 'Alibaba Qwen',
+        'glm-web': 'Zhipu GLM',
+        'perplexity-web': 'Perplexity',
+      };
+      return NAMES[providerId] || providerId;
+    }
+
+    function updateSelectedProviderAuthUI() {
+      const modelId = dom.modelSelect.value;
+      const providerId = getProviderIdFromModel(modelId);
+      const isAuthed = !!providersAuthMap[providerId];
+
+      const badge = document.getElementById('selected-provider-auth-badge');
+      const dot = document.getElementById('selected-provider-dot');
+      const text = document.getElementById('selected-provider-auth-text');
+      const btn = document.getElementById('btn-login-selected');
+
+      if (!badge || !dot || !text || !btn) return;
+
+      if (isAuthed) {
+        badge.style.background = 'rgba(16, 185, 129, 0.1)';
+        badge.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+        dot.className = 'status-indicator-dot green';
+        text.textContent = `${getProviderDisplayName(providerId)}: Authenticated`;
+        text.style.color = '#34d399';
+        btn.style.display = 'none';
+      } else {
+        badge.style.background = 'rgba(239, 68, 68, 0.1)';
+        badge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+        dot.className = 'status-indicator-dot red';
+        text.textContent = `${getProviderDisplayName(providerId)}: Not Logged In`;
+        text.style.color = '#f87171';
+        btn.style.display = 'inline-block';
+        btn.onclick = () => triggerLogin(providerId, getProviderDisplayName(providerId));
+      }
+    }
+
+    async function loadProvidersStatus() {
+      try {
+        const res = await fetch('/webmodel/providers');
+        const data = await res.json();
+        const providers = data.providers || [];
+
+        const listEl = document.getElementById('sidebar-provider-list');
+        const summaryEl = document.getElementById('sidebar-auth-summary');
+        if (!listEl) return;
+
+        listEl.innerHTML = '';
+        let authedCount = 0;
+
+        providers.forEach(p => {
+          providersAuthMap[p.id] = p.authenticated;
+          if (p.authenticated) authedCount++;
+
+          const item = document.createElement('div');
+          item.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; border-radius: 6px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--card-border); font-size: 11px;';
+
+          const left = document.createElement('div');
+          left.style.cssText = 'display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+          const dot = document.createElement('span');
+          dot.className = `status-indicator-dot ${p.authenticated ? 'green' : 'red'}`;
+          const name = document.createElement('span');
+          name.textContent = p.name;
+          name.style.fontWeight = '500';
+          left.appendChild(dot);
+          left.appendChild(name);
+
+          const right = document.createElement('div');
+          if (p.authenticated) {
+            const tag = document.createElement('span');
+            tag.style.cssText = 'color: #34d399; font-size: 10px; font-weight: 600; text-transform: uppercase;';
+            tag.textContent = 'Active';
+            right.appendChild(tag);
+          } else {
+            const btn = document.createElement('button');
+            btn.textContent = 'Login';
+            btn.style.cssText = 'padding: 2px 8px; font-size: 10px; background: #6366f1; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;';
+            btn.addEventListener('click', () => triggerLogin(p.id, p.name));
+            right.appendChild(btn);
+          }
+
+          item.appendChild(left);
+          item.appendChild(right);
+          listEl.appendChild(item);
+        });
+
+        if (summaryEl) {
+          summaryEl.textContent = `${authedCount} / ${providers.length} Active`;
+        }
+
+        updateSelectedProviderAuthUI();
+      } catch (err) {
+        console.warn('Could not load provider status:', err);
+      }
+    }
+
+    function showNotification(message, type = 'info', duration = 5000) {
+      let container = document.getElementById('toast-notification-container');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-notification-container';
+        container.style.cssText = 'position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; max-width: 440px; pointer-events: none;';
+        document.body.appendChild(container);
+      }
+
+      const toast = document.createElement('div');
+      toast.style.cssText = `
+        background: ${type === 'success' ? '#064e3b' : type === 'error' ? '#7f1d1d' : '#0f172a'};
+        color: #f8fafc;
+        border: 1px solid ${type === 'success' ? '#059669' : type === 'error' ? '#dc2626' : '#38bdf8'};
+        border-radius: 10px;
+        padding: 12px 18px;
+        font-size: 13.5px;
+        line-height: 1.5;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        pointer-events: auto;
+        opacity: 0;
+        transform: translateY(12px);
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      `;
+
+      const icon = document.createElement('span');
+      icon.textContent = type === 'success' ? '✓' : type === 'error' ? '⚠' : '🌐';
+      icon.style.fontSize = '16px';
+      icon.style.fontWeight = 'bold';
+
+      const msg = document.createElement('div');
+      msg.textContent = message;
+      msg.style.flex = '1';
+
+      toast.appendChild(icon);
+      toast.appendChild(msg);
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+      });
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(12px)';
+        setTimeout(() => toast.remove(), 300);
+      }, duration);
+    }
+
+    async function triggerLogin(providerId, providerName) {
+      const name = providerName || getProviderDisplayName(providerId);
+      showNotification(`Opening ${name} login tab in the dedicated Web Model Bridge Chrome window... Please log in there!`, 'info', 7000);
+
+      try {
+        const res = await fetch('/webmodel/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ providerId }),
+        });
+        const data = await res.json();
+
+        const pollInterval = setInterval(async () => {
+          await loadProvidersStatus();
+          if (providersAuthMap[providerId]) {
+            clearInterval(pollInterval);
+            showNotification(`✓ ${name} authenticated successfully! Provider is now active.`, 'success', 6000);
+          }
+        }, 2000);
+
+        setTimeout(() => clearInterval(pollInterval), 120000);
+      } catch (err) {
+        showNotification(`Could not communicate with bridge server: ${err.message}`, 'error', 6000);
+      }
+    }
+
+    function promptLoginModal(providerId) {
+      pendingProviderLogin = providerId;
+      const modal = document.getElementById('login-confirm-modal');
+      const title = document.getElementById('login-modal-title');
+      const desc = document.getElementById('login-modal-desc');
+      const name = getProviderDisplayName(providerId);
+
+      title.textContent = `${name} is Not Logged In`;
+      desc.textContent = `Provider "${name}" has not been authenticated yet. Would you like to log in now? We will open a tab in the dedicated Web Model Bridge Chrome window for you to sign in.`;
+      modal.classList.add('open');
+
+      const handleConfirm = () => {
+        modal.classList.remove('open');
+        triggerLogin(providerId, name);
+        cleanup();
+      };
+      const handleCancel = () => {
+        modal.classList.remove('open');
+        cleanup();
+      };
+      const handleKey = (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleConfirm();
+        } else if (e.key === 'Escape') {
+          handleCancel();
+        }
+      };
+
+      const btnConfirm = document.getElementById('btn-confirm-login-modal');
+      const btnCancel = document.getElementById('btn-cancel-login-modal');
+
+      btnConfirm.onclick = handleConfirm;
+      btnCancel.onclick = handleCancel;
+      window.addEventListener('keydown', handleKey);
+
+      function cleanup() {
+        window.removeEventListener('keydown', handleKey);
+        btnConfirm.onclick = null;
+        btnCancel.onclick = null;
+      }
+    }
+
+    // Auto-detect base URL
+    async function initBaseUrl() {
+      const ports = [3457, 3456];
+      for (const p of ports) {
+        const url = `http://127.0.0.1:${p}/v1`;
+        try {
+          const res = await fetch(`${url}/models`, { signal: AbortSignal.timeout(1500) });
+          if (res.ok) {
+            dom.apiBaseUrl.value = url;
+            document.querySelectorAll('.btn-preset[data-url]').forEach(btn => {
+              btn.classList.toggle('active', btn.dataset.url === url);
+            });
+            break;
+          }
+        } catch {}
+      }
+    }
+
+    function populateDefaultProviders() {
+      dom.modelSelect.innerHTML = '';
+      DEFAULT_PROVIDERS.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name;
+        dom.modelSelect.appendChild(opt);
+      });
+    }
+
+    // Directly load the 9 providers into the dropdown
+    async function loadModels() {
+      const baseUrl = dom.apiBaseUrl.value.replace(/\/+$/, '');
+      try {
+        const res = await fetch(`${baseUrl}/models?mode=off`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const models = data.data || [];
+
+        dom.modelSelect.innerHTML = '';
+        if (models.length > 0) {
+          models.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.name || m.id;
+            dom.modelSelect.appendChild(opt);
+          });
+        } else {
+          populateDefaultProviders();
+        }
+      } catch (err) {
+        console.warn('Could not load models from API, using default providers:', err.message);
+        populateDefaultProviders();
+      }
+      updateSelectedProviderAuthUI();
+    }
+
+    // Word counter & 25k detection
+    dom.composerInput.addEventListener('input', () => {
+      const text = dom.composerInput.value.trim();
+      const wordCount = text ? (text.match(/\S+/g) || []).length : 0;
+      dom.wordCounter.textContent = `${wordCount.toLocaleString()} words`;
+
+      if (wordCount >= 25000) {
+        dom.badgeLongDoc.style.display = 'inline-block';
+      } else {
+        dom.badgeLongDoc.style.display = 'none';
+      }
+    });
+
+    // File attachments handler
+    dom.btnAttach.addEventListener('click', () => dom.fileInput.click());
+
+    dom.fileInput.addEventListener('change', (e) => {
+      handleFiles(Array.from(e.target.files || []));
+      dom.fileInput.value = '';
+    });
+
+    function handleFiles(files) {
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          activeFiles.push({
+            name: file.name,
+            type: file.type || 'application/octet-stream',
+            size: file.size,
+            data: ev.target.result,
+          });
+          renderFilePreviews();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function renderFilePreviews() {
+      dom.filePreviewStrip.innerHTML = '';
+      activeFiles.forEach((file, index) => {
+        const pill = document.createElement('div');
+        pill.className = 'file-pill';
+        let icon = '📄';
+        if (file.type.startsWith('image/')) icon = '🖼️';
+        else if (file.type.startsWith('video/')) icon = '🎬';
+        else if (file.type.startsWith('audio/')) icon = '🎵';
+
+        pill.innerHTML = `
+          <span>${icon}</span>
+          <span>${file.name}</span>
+          <span style="font-size: 10px; color: var(--text-muted);">${(file.size / 1024).toFixed(1)} KB</span>
+          <span class="file-pill-remove" data-index="${index}">✕</span>
+        `;
+        dom.filePreviewStrip.appendChild(pill);
+      });
+
+      document.querySelectorAll('.file-pill-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const idx = parseInt(e.target.dataset.index, 10);
+          activeFiles.splice(idx, 1);
+          renderFilePreviews();
+        });
+      });
+    }
+
+    // Drag & Drop
+    window.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dom.dropzoneOverlay.classList.add('active');
+    });
+
+    dom.dropzoneOverlay.addEventListener('dragleave', () => {
+      dom.dropzoneOverlay.classList.remove('active');
+    });
+
+    dom.dropzoneOverlay.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dom.dropzoneOverlay.classList.remove('active');
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleFiles(Array.from(e.dataTransfer.files));
+      }
+    });
+
+    // Append Message to Chat
+    function appendMessage(role, text, files = []) {
+      const row = document.createElement('div');
+      row.className = `message-row ${role}`;
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      avatar.textContent = role === 'user' ? '👤' : '🌉';
+
+      const content = document.createElement('div');
+      content.className = 'message-content';
+
+      if (files.length > 0) {
+        const badgeStrip = document.createElement('div');
+        files.forEach(f => {
+          const b = document.createElement('span');
+          b.className = 'attached-file-badge';
+          b.textContent = `📎 ${f.name}`;
+          badgeStrip.appendChild(b);
+        });
+        content.appendChild(badgeStrip);
+      }
+
+      const textNode = document.createElement('div');
+      textNode.className = 'message-text';
+      textNode.innerHTML = formatText(text);
+      content.appendChild(textNode);
+
+      row.appendChild(avatar);
+      row.appendChild(content);
+      dom.chatMessages.appendChild(row);
+      dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight;
+
+      return { row, content, textNode };
+    }
+
+    function formatText(raw) {
+      if (!raw) return '';
+      let escaped = raw
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      
+      escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      escaped = escaped.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+      escaped = escaped.replace(/\n/g, '<br>');
+      return escaped;
+    }
+
+    // Send Message Logic with Cancel / Stop Button & Auto-Retries
+    async function sendMessage() {
+      // If currently generating, clicking the button triggers Stop / Cancel
+      if (isGenerating) {
+        if (currentAbortController) {
+          currentAbortController.abort();
+        }
+        return;
+      }
+
+      const prompt = dom.composerInput.value.trim();
+      if (!prompt && activeFiles.length === 0) return;
+
+      const model = dom.modelSelect.value || 'gemini';
+      const providerId = getProviderIdFromModel(model);
+
+      // Prompt login if provider is unauthenticated
+      if (providersAuthMap[providerId] === false) {
+        promptLoginModal(providerId);
+        return;
+      }
+
+      isGenerating = true;
+      currentAbortController = new AbortController();
+      dom.btnSend.disabled = false;
+      dom.btnSend.classList.add('btn-cancel');
+      dom.btnSend.innerHTML = `<span>Stop</span> ⏹`;
+
+      const filesToSend = [...activeFiles];
+      activeFiles = [];
+      renderFilePreviews();
+      dom.composerInput.value = '';
+      dom.wordCounter.textContent = '0 words';
+      dom.badgeLongDoc.style.display = 'none';
+
+      // Append User message
+      appendMessage('user', prompt, filesToSend);
+
+      // Create assistant container
+      const { row, content, textNode } = appendMessage('assistant', '');
+      const cursor = document.createElement('span');
+      cursor.className = 'cursor-blink';
+      textNode.appendChild(cursor);
+
+      const baseUrl = dom.apiBaseUrl.value.replace(/\/+$/, '');
+      const stream = dom.streamSelect.value === 'true';
+
+      const wordCount = prompt ? (prompt.match(/\S+/g) || []).length : 0;
+      let effectivePrompt = prompt;
+      let filesForAttempt = [...filesToSend];
+
+      // Normal case: prompts > 25,000 words auto-converted to document file
+      if (wordCount > 25000) {
+        try {
+          const blob = new Blob([prompt], { type: 'text/plain' });
+          const promptDataUrl = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsDataURL(blob);
+          });
+          filesForAttempt.push({
+            name: 'prompt_document.txt',
+            type: 'text/plain',
+            size: blob.size,
+            data: promptDataUrl,
+          });
+          effectivePrompt = 'Please process and analyze the full content in the attached prompt_document.txt file.';
+        } catch (e) {
+          console.warn('Could not auto-convert >25k words prompt to file:', e);
+        }
+      }
+
+      const MAX_RETRIES = 2;
+      let attempt = 0;
+      let typingDelayMs = undefined;
+
+      while (true) {
+        let accumulated = '';
+        try {
+          if (currentAbortController.signal.aborted) {
+            throw new DOMException('Generation stopped by user', 'AbortError');
+          }
+
+          const response = await fetch(`${baseUrl}/chat/completions`, {
+            method: 'POST',
+            signal: currentAbortController.signal,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer not-needed',
+            },
+            body: JSON.stringify({
+              model,
+              messages: [{ role: 'user', content: effectivePrompt }],
+              files: filesForAttempt,
+              stream,
+              typing_delay_ms: typingDelayMs,
+            }),
+          });
+
+          if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            const err = new Error(errData.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+            if (errData.error?.scene) err.scene = errData.error.scene;
+            throw err;
+          }
+
+          if (!stream) {
+            const data = await response.json();
+            accumulated = data.choices?.[0]?.message?.content || '(No response text)';
+            cursor.remove();
+            textNode.innerHTML = formatText(accumulated);
+
+            if (data.files && data.files.length > 0) {
+              renderArtifactCards(content, data.files);
+            }
+          } else {
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+
+              for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed || !trimmed.startsWith('data:')) continue;
+                const dataStr = trimmed.slice(5).trim();
+                if (dataStr === '[DONE]') continue;
+
+                let chunk;
+                try {
+                  chunk = JSON.parse(dataStr);
+                } catch {
+                  continue;
+                }
+
+                if (chunk.files && chunk.files.length > 0) {
+                  renderArtifactCards(content, chunk.files);
+                }
+                if (chunk.error_scene) {
+                  renderErrorScene(content, chunk.error_scene);
+                }
+                if (chunk.error) {
+                  const streamErr = new Error(chunk.error.message || 'Provider streaming error');
+                  if (chunk.error_scene) streamErr.scene = chunk.error_scene;
+                  throw streamErr;
+                }
+
+                const delta = chunk.choices?.[0]?.delta?.content || '';
+                if (delta) {
+                  accumulated += delta;
+                  textNode.innerHTML = formatText(accumulated);
+                  textNode.appendChild(cursor);
+                  dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight;
+                }
+              }
+            }
+            cursor.remove();
+
+            if (accumulated.trim().length === 0) {
+              throw new Error('Provider returned an empty response.');
+            }
+          }
+
+          // Successful finish
+          break;
+
+        } catch (err) {
+          if (currentAbortController?.signal.aborted || err.name === 'AbortError') {
+            cursor.remove();
+            textNode.innerHTML += `<br><span style="color: var(--text-muted); font-size: 12px;">⏹ <i>Generation stopped by user</i></span>`;
+            break;
+          }
+
+          attempt++;
+          if (attempt <= MAX_RETRIES) {
+            cursor.remove();
+            const retryDiv = document.createElement('div');
+            retryDiv.style.cssText = 'color: #fbbf24; font-size: 11px; margin: 6px 0; font-family: var(--font-mono);';
+            retryDiv.innerHTML = `⚠️ Attempt ${attempt} failed: ${err.message || 'Unknown error'}. Retrying automatically (${attempt} of ${MAX_RETRIES})...`;
+            textNode.appendChild(retryDiv);
+            textNode.appendChild(cursor);
+
+            // Retry rule 1: If prompt <= 250 words: type at 100 WPM pacing (~12ms per char delay)
+            if (wordCount <= 250) {
+              typingDelayMs = 12;
+            }
+
+            // Retry rule 2: If prompt > 100 words in case of failure: auto-convert prompt to text file attachment (prompt_retry.txt)
+            if (wordCount > 100 && !filesForAttempt.some(f => f.name === 'prompt_retry.txt')) {
+              try {
+                const blob = new Blob([prompt], { type: 'text/plain' });
+                const promptDataUrl = await new Promise(res => {
+                  const r = new FileReader();
+                  r.onload = e => res(e.target.result);
+                  r.readAsDataURL(blob);
+                });
+                filesForAttempt = [...filesForAttempt, {
+                  name: 'prompt_retry.txt',
+                  type: 'text/plain',
+                  size: blob.size,
+                  data: promptDataUrl,
+                }];
+                effectivePrompt = 'Please process and answer based on the attached prompt_retry.txt.';
+              } catch (e) {
+                console.warn('Could not auto-convert retry prompt to file:', e);
+              }
+            }
+
+            await new Promise(r => setTimeout(r, 1500));
+            if (currentAbortController?.signal.aborted) break;
+            continue;
+          }
+
+          // Retries exhausted
+          cursor.remove();
+          textNode.innerHTML += `<br><span style="color: #f87171;">⚠️ Error after ${attempt} attempts: ${err.message || err}</span>`;
+          if (err.scene) {
+            renderErrorScene(content, err.scene);
+          }
+          break;
+        }
+      }
+
+      // Cleanup & Reset button state
+      isGenerating = false;
+      currentAbortController = null;
+      dom.btnSend.classList.remove('btn-cancel');
+      dom.btnSend.disabled = false;
+      dom.btnSend.innerHTML = `<span>Send</span> ➔`;
+    }
+
+    function renderArtifactCards(container, files) {
+      files.forEach(f => {
+        const card = document.createElement('div');
+        card.className = 'artifact-card';
+        card.innerHTML = `
+          <div>
+            <div class="artifact-title">📁 Generated Artifact: ${f.name || 'output_file'}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">${f.type || 'file'}</div>
+          </div>
+          <a href="${f.url || f.data}" download="${f.name || 'download'}" class="btn btn-secondary" style="font-size: 11px; text-decoration: none;">Download ⬇</a>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderErrorScene(container, scene) {
+      const banner = document.createElement('div');
+      banner.className = 'error-scene-banner';
+      banner.innerHTML = `
+        <div class="error-scene-header">
+          <span>🚨 Browser Scene Captured</span>
+          <span style="font-size: 11px; font-weight: normal; color: var(--text-muted);">${scene.title || scene.url}</span>
+        </div>
+        <p style="font-size: 12px; color: var(--text);">${scene.details || 'Browser interaction halted.'}</p>
+        ${scene.screenshot ? `<img src="${scene.screenshot}" class="error-scene-preview" title="Click to view full screenshot">` : ''}
+      `;
+
+      if (scene.screenshot) {
+        banner.querySelector('.error-scene-preview').addEventListener('click', () => {
+          dom.modalSceneImg.src = scene.screenshot;
+          dom.modalSceneDetails.textContent = `URL: ${scene.url} | Title: ${scene.title}`;
+          dom.sceneModal.classList.add('open');
+        });
+      }
+
+      container.appendChild(banner);
+    }
+
+    dom.btnCloseModal.addEventListener('click', () => dom.sceneModal.classList.remove('open'));
+    dom.sceneModal.addEventListener('click', (e) => {
+      if (e.target === dom.sceneModal) dom.sceneModal.classList.remove('open');
+    });
+
+    dom.btnSend.addEventListener('click', sendMessage);
+    dom.composerInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    dom.modelSelect.addEventListener('change', updateSelectedProviderAuthUI);
+
+    // Presets
+    document.querySelectorAll('.btn-preset[data-url]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.btn-preset[data-url]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        dom.apiBaseUrl.value = btn.dataset.url;
+        loadModels();
+      });
+    });
+
+    // ── API Code Modal Controller ──
+    const apiModal = document.getElementById('api-snippets-modal');
+    const btnOpenApiModal = document.getElementById('btn-open-api-modal');
+    const btnCloseApiModal = document.getElementById('btn-close-api-modal');
+    const modalActiveModel = document.getElementById('modal-active-model-name');
+    const chatModalCode = document.getElementById('chat-modal-code');
+    const chatModalLang = document.getElementById('chat-modal-lang');
+    const btnCopyChatCode = document.getElementById('btn-copy-chat-modal-code');
+    const btnCopyChatText = document.getElementById('btn-copy-chat-modal-text');
+    let activeChatModalTab = 'curl-openai';
+
+    function updateChatModalSnippet() {
+      const baseUrl = window.location.origin;
+      const model = dom.modelSelect.value || 'gemini';
+      if (modalActiveModel) modalActiveModel.textContent = model;
+
+      if (activeChatModalTab === 'curl-openai') {
+        chatModalLang.textContent = 'BASH / CURL (OPENAI FORMAT)';
+        chatModalCode.textContent = 
+`curl ${baseUrl}/v1/chat/completions \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "model": "${model}",
+    "messages": [
+      {"role": "user", "content": "Explain quantum computing in two concise sentences."}
+    ],
+    "stream": true
+  }'`;
+      } else if (activeChatModalTab === 'curl-anthropic') {
+        chatModalLang.textContent = 'BASH / CURL (ANTHROPIC FORMAT)';
+        const antModel = model.includes('claude') ? model : 'claude-web/claude-sonnet-4-6';
+        chatModalCode.textContent = 
+`curl ${baseUrl}/v1/messages \\
+  -H "Content-Type: application/json" \\
+  -H "x-api-key: not-needed" \\
+  -H "anthropic-version: 2023-06-01" \\
+  -d '{
+    "model": "${antModel}",
+    "max_tokens": 1024,
+    "messages": [
+      {"role": "user", "content": "Explain quantum computing in two concise sentences."}
+    ],
+    "stream": true
+  }'`;
+      } else if (activeChatModalTab === 'python') {
+        chatModalLang.textContent = 'PYTHON (OPENAI SDK)';
+        chatModalCode.textContent = 
+`from openai import OpenAI
+
+client = OpenAI(
+    base_url="${baseUrl}/v1",
+    api_key="not-needed"
+)
+
+response = client.chat.completions.create(
+    model="${model}",
+    messages=[{"role": "user", "content": "Explain quantum computing in two concise sentences."}],
+    stream=True
+)
+
+for chunk in response:
+    content = chunk.choices[0].delta.content or ""
+    print(content, end="", flush=True)
+print()`;
+      } else if (activeChatModalTab === 'nodejs') {
+        chatModalLang.textContent = 'JAVASCRIPT (NODE.JS SDK)';
+        chatModalCode.textContent = 
+`import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: '${baseUrl}/v1',
+  apiKey: 'not-needed',
+});
+
+const stream = await client.chat.completions.create({
+  model: '${model}',
+  messages: [{ role: 'user', content: 'Explain quantum computing in two concise sentences.' }],
+  stream: true,
+});
+
+for await (const chunk of stream) {
+  process.stdout.write(chunk.choices[0]?.delta?.content || '');
+}
+console.log();`;
+      }
+    }
+
+    if (btnOpenApiModal && apiModal) {
+      btnOpenApiModal.addEventListener('click', () => {
+        updateChatModalSnippet();
+        apiModal.classList.add('open');
+      });
+    }
+
+    if (btnCloseApiModal && apiModal) {
+      btnCloseApiModal.addEventListener('click', () => {
+        apiModal.classList.remove('open');
+      });
+    }
+
+    if (apiModal) {
+      apiModal.addEventListener('click', (e) => {
+        if (e.target === apiModal) apiModal.classList.remove('open');
+      });
+    }
+
+    document.querySelectorAll('#chat-modal-tabs button').forEach(tabBtn => {
+      tabBtn.addEventListener('click', () => {
+        document.querySelectorAll('#chat-modal-tabs button').forEach(b => b.classList.remove('active'));
+        tabBtn.classList.add('active');
+        activeChatModalTab = tabBtn.dataset.chatTab;
+        updateChatModalSnippet();
+      });
+    });
+
+    if (btnCopyChatCode) {
+      btnCopyChatCode.addEventListener('click', () => {
+        if (!chatModalCode) return;
+        navigator.clipboard.writeText(chatModalCode.textContent).then(() => {
+          if (btnCopyChatText) btnCopyChatText.textContent = '✓ Copied!';
+          showNotification('API code snippet copied to clipboard!', 'success', 2500);
+          setTimeout(() => {
+            if (btnCopyChatText) btnCopyChatText.textContent = 'Copy Code';
+          }, 2000);
+        });
+      });
+    }
+
+    // Initialize
+    initBaseUrl().then(() => loadModels()).then(() => loadProvidersStatus());
+    setInterval(loadProvidersStatus, 5000);
+  </script>
+</body>
+</html>

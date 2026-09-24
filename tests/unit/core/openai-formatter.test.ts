@@ -54,6 +54,17 @@ describe('OpenAI Formatter', () => {
       const chunk = formatStreamChunk('run-1', modelId, event, false);
       expect(chunk.choices[0].finish_reason).toBe('tool_calls');
     });
+
+    it('formats error event with error property and finish_reason error', () => {
+      const event: StreamEvent = { type: 'error', message: 'Quota limit reached' };
+      const chunk = formatStreamChunk('run-1', modelId, event, false);
+      expect((chunk as any).error).toEqual({
+        message: 'Quota limit reached',
+        type: 'provider_error',
+        code: 'provider_error',
+      });
+      expect(chunk.choices[0].finish_reason).toBe('error');
+    });
   });
 
   describe('formatDoneChunk', () => {

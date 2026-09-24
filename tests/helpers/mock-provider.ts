@@ -1,6 +1,13 @@
 import { BaseProvider, type ProviderInfo, type ModelInfo, type ChatRequest } from '../../src/core/provider.js';
 import type { StreamEvent } from '../../src/core/stream.js';
 
+export type MockModelInput = {
+  id: string;
+  name: string;
+  contextWindow?: number;
+  maxOutput?: number;
+};
+
 export class MockProvider extends BaseProvider {
   readonly info: ProviderInfo;
   private _authenticated: boolean;
@@ -8,7 +15,7 @@ export class MockProvider extends BaseProvider {
 
   constructor(
     id: string,
-    opts?: { authenticated?: boolean; models?: ModelInfo[] }
+    opts?: { authenticated?: boolean; models?: (ModelInfo | MockModelInput)[] }
   ) {
     super();
     this.info = {
@@ -19,9 +26,14 @@ export class MockProvider extends BaseProvider {
       needsBrowser: true,
     };
     this._authenticated = opts?.authenticated ?? true;
-    this._models = opts?.models ?? [
+    this._models = (opts?.models ?? [
       { id: 'mock-model-1', name: 'Mock Model 1', contextWindow: 100000, maxOutput: 4096 },
-    ];
+    ]).map(m => ({
+      id: m.id,
+      name: m.name,
+      contextWindow: m.contextWindow ?? 1000000,
+      maxOutput: m.maxOutput ?? 8192,
+    }));
   }
 
   async login(): Promise<void> {

@@ -20,8 +20,10 @@ class FailingProvider extends BaseProvider {
   async models(): Promise<ModelInfo[]> {
     return [{ id: 'fail-model', name: 'Fail', contextWindow: 1000, maxOutput: 100 }];
   }
+  public receivedReqs: ChatRequest[] = [];
   private attempts = 0;
-  async *chat(_req: ChatRequest): AsyncIterable<StreamEvent> {
+  async *chat(req: ChatRequest): AsyncIterable<StreamEvent> {
+    this.receivedReqs.push(req);
     this.attempts++;
     if (this.attempts <= this.failCount) {
       yield { type: 'error', message: 'Provider failed' };
@@ -87,6 +89,8 @@ describe('Router', () => {
       events.push(e);
     }
     expect(events.some(e => e.type === 'text_delta' && e.delta === 'Recovered!')).toBe(true);
+    expect(failing.receivedReqs[0].typingDelayMs).toBeUndefined();
+    expect(failing.receivedReqs[1].typingDelayMs).toBe(12);
   });
 
   it('exhausts retries and falls back', async () => {
