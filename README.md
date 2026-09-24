@@ -101,9 +101,9 @@ web-model-bridge provides seamless, unified API access across 9 leading AI platf
 | **Google Gemini** | `gemini` | [gemini.google.com](https://gemini.google.com) | Gemini 3 Flash & 2.5 Pro with large context window |
 | **xAI Grok** | `grok` | [grok.com](https://grok.com) | Grok 3 with live reasoning & real-time search |
 | **Perplexity** | `perplexity` | [perplexity.ai](https://perplexity.ai) | Sonar Pro citation-backed search completions |
-| **Moonshot Kimi** | `kimi` | [kimi.moonshot.cn](https://kimi.moonshot.cn) | Kimi K2.5 with long-document reasoning |
+| **Moonshot Kimi** | `kimi` | [kimi.ai](https://www.kimi.ai/) | Kimi K2.5 with long-document reasoning |
 | **Alibaba Qwen** | `qwen` | [chat.qwen.ai](https://chat.qwen.ai) | Qwen 3.5 Plus & QwQ reasoning models |
-| **Zhipu GLM** | `glm` | [chatglm.cn](https://chatglm.cn) | GLM-5 series bilingual agentic intelligence |
+| **Zhipu GLM** | `glm` | [chat.z.ai](https://chat.z.ai/) | GLM-5 series bilingual agentic intelligence |
 
 ---
 

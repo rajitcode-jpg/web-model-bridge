@@ -1550,7 +1550,7 @@ export class BrowserUIDriver {
     const timeoutMs = typeof timeoutMsOrOpts === 'number' ? timeoutMsOrOpts : 90000;
     try {
       if (!page.url().includes('kimi.ai') && !page.url().includes('moonshot.cn')) {
-        await page.goto('https://kimi.ai', { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
+        await page.goto('https://www.kimi.ai', { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
       }
       await page.bringToFront().catch(() => {});
       await page.waitForTimeout(1000);
@@ -1977,7 +1977,7 @@ export class BrowserUIDriver {
     const timeoutMs = typeof timeoutMsOrOpts === 'number' ? timeoutMsOrOpts : 90000;
     try {
       if (!page.url().includes('z.ai') && !page.url().includes('chatglm')) {
-        await page.goto('https://z.ai', { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(async () => {
+        await page.goto('https://chat.z.ai', { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(async () => {
           await page.goto('https://chatglm.cn', { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
         });
       }

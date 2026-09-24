@@ -8,8 +8,8 @@ export class KimiProvider extends BaseProvider {
   readonly info: ProviderInfo = {
     id: 'kimi-web',
     name: 'Kimi Web',
-    website: 'https://kimi.ai',
-    loginUrl: 'https://kimi.ai/auth',
+    website: 'https://www.kimi.ai',
+    loginUrl: 'https://www.kimi.ai',
     needsBrowser: true,
   };
 
@@ -50,7 +50,7 @@ export class KimiProvider extends BaseProvider {
     if (this.getPage && this.uiDriver) {
       let page: any = null;
       try {
-        page = await this.getPage('https://kimi.ai');
+        page = await this.getPage('https://www.kimi.ai');
         yield* this.uiDriver.chatWithKimi(page, prompt, req.files, { typingDelayMs: req.typingDelayMs });
         return;
       } catch (err) {

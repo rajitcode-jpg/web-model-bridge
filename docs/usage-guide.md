@@ -34,9 +34,9 @@ npx web-model-bridge
 | Claude Web     | claude.ai               | Sonnet 4.6, Haiku 4.5    |
 | ChatGPT Web    | chatgpt.com             | GPT-5.3, GPT-5.4 Mini    |
 | DeepSeek Web   | chat.deepseek.com       | DeepSeek V4, V4 Reasoner |
-| Kimi Web       | kimi.moonshot.cn        | Kimi K2.5                |
+| Kimi Web       | www.kimi.ai             | Kimi K2.5                |
 | Qwen Web       | chat.qwen.ai            | Qwen 3.5 Plus, QwQ       |
-| GLM Web        | chatglm.cn              | GLM-5                    |
+| GLM Web        | chat.z.ai               | GLM-5                    |
 | Grok Web       | grok.com                | Grok 3                   |
 | Gemini Web     | gemini.google.com       | Gemini 3 Flash, 2.5 Pro  |
 | Perplexity Web | perplexity.ai           | Perplexity               |
@@ -138,10 +138,10 @@ Claude Code 会将请求发送到 `http://localhost:3456/v1/messages` → web-mo
 | `chatgpt-web/gpt-5.4-mini`          | GPT-5.4 Mini         | 128K | chatgpt.com             |
 | `deepseek-web/deepseek-v4`          | DeepSeek V4          | 128K | chat.deepseek.com       |
 | `deepseek-web/deepseek-v4-reasoner` | DeepSeek V4 Reasoner | 128K | chat.deepseek.com       |
-| `kimi-web/kimi-k2.5`                | Kimi K2.5            | 256K | kimi.moonshot.cn        |
+| `kimi-web/kimi-k2.5`                | Kimi K2.5            | 256K | www.kimi.ai             |
 | `qwen-web/qwen-3.5-plus`            | Qwen 3.5 Plus        | 262K | chat.qwen.ai            |
 | `qwen-web/qwq`                      | QwQ                  | 32K  | chat.qwen.ai            |
-| `glm-web/glm-5`                     | GLM-5                | 128K | chatglm.cn              |
+| `glm-web/glm-5`                     | GLM-5                | 128K | chat.z.ai               |
 | `grok-web/grok-3`                   | Grok 3               | 128K | grok.com                |
 | `gemini-web/gemini-3-flash`         | Gemini 3 Flash       | 1M   | gemini.google.com       |
 | `gemini-web/gemini-2.5-pro`         | Gemini 2.5 Pro       | 1M   | gemini.google.com       |

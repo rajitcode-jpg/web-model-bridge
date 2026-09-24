@@ -59,7 +59,7 @@ export const PROVIDERS_CATALOG: ProviderCatalogItem[] = [
     name: 'Moonshot Kimi',
     description: 'Ultra-long context Kimi AI',
     defaultModel: 'kimi-k2.5',
-    website: 'https://kimi.ai',
+    website: 'https://www.kimi.ai',
   },
   {
     id: 'qwen',
@@ -73,7 +73,7 @@ export const PROVIDERS_CATALOG: ProviderCatalogItem[] = [
     name: 'Zhipu GLM',
     description: 'GLM flagship foundation model by Zhipu AI',
     defaultModel: 'glm-5',
-    website: 'https://chatglm.com',
+    website: 'https://chat.z.ai',
   },
 ];
 

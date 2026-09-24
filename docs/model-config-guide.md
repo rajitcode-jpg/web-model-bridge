@@ -24,10 +24,10 @@
 | `chatgpt-web/gpt-5.4-mini` | GPT-5.4 Mini | 128,000 | 4,096 | chatgpt.com |
 | `deepseek-web/deepseek-v4` | DeepSeek V4 | 128,000 | 8,192 | chat.deepseek.com |
 | `deepseek-web/deepseek-v4-reasoner` | DeepSeek V4 Reasoner | 128,000 | 8,192 | chat.deepseek.com |
-| `kimi-web/kimi-k2.5` | Kimi K2.5 | 256,000 | 8,192 | kimi.com |
+| `kimi-web/kimi-k2.5` | Kimi K2.5 | 256,000 | 8,192 | www.kimi.ai |
 | `qwen-web/qwen-3.5-plus` | Qwen 3.5 Plus | 262,000 | 8,192 | chat.qwen.ai |
 | `qwen-web/qwq` | QwQ | 32,000 | 8,192 | chat.qwen.ai |
-| `glm-web/glm-5` | GLM-5 | 128,000 | 4,096 | chatglm.cn |
+| `glm-web/glm-5` | GLM-5 | 128,000 | 4,096 | chat.z.ai |
 | `grok-web/grok-3` | Grok 3 | 128,000 | 4,096 | grok.com |
 | `gemini-web/gemini-3-flash` | Gemini 3 Flash | 1,000,000 | 8,192 | gemini.google.com |
 | `gemini-web/gemini-2.5-pro` | Gemini 2.5 Pro | 1,000,000 | 8,192 | gemini.google.com |

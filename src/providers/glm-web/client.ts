@@ -1,1 +1,1 @@
-export const GLM_WEB_BASE_URL = 'https://z.ai';
+export const GLM_WEB_BASE_URL = 'https://chat.z.ai';

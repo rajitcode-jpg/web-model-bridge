@@ -8,8 +8,8 @@ export class GLMProvider extends BaseProvider {
   readonly info: ProviderInfo = {
     id: 'glm-web',
     name: 'GLM Web',
-    website: 'https://z.ai',
-    loginUrl: 'https://z.ai',
+    website: 'https://chat.z.ai',
+    loginUrl: 'https://chat.z.ai',
     needsBrowser: true,
   };
 
@@ -51,7 +51,7 @@ export class GLMProvider extends BaseProvider {
     if (this.getPage && this.uiDriver) {
       let page: any = null;
       try {
-        page = await this.getPage('https://z.ai');
+        page = await this.getPage('https://chat.z.ai');
         yield* this.uiDriver.chatWithGLM(page, prompt, req.files, { typingDelayMs: req.typingDelayMs });
         return;
       } catch (err) {

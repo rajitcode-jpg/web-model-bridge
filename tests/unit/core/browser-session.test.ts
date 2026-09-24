@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { BrowserManager } from '../../../src/browser/manager.js';
 import { GLMProvider } from '../../../src/providers/glm-web/index.js';
+import { KimiProvider } from '../../../src/providers/kimi-web/index.js';
 import { AuthStore } from '../../../src/auth/store.js';
 
 describe('BrowserManager Session & Auth Detection', () => {
@@ -83,10 +84,17 @@ describe('BrowserManager Session & Auth Detection', () => {
     expect(await bm.isPageAuthenticated(mockPageGLM, 'glm-web')).toBe(true);
   });
 
-  it('GLM provider defaults to official global URL https://z.ai', () => {
+  it('GLM provider defaults to official global URL https://chat.z.ai', () => {
     const dummyStore = new AuthStore('/tmp/dummy');
     const glm = new GLMProvider(dummyStore);
-    expect(glm.info.website).toBe('https://z.ai');
-    expect(glm.info.loginUrl).toBe('https://z.ai');
+    expect(glm.info.website).toBe('https://chat.z.ai');
+    expect(glm.info.loginUrl).toBe('https://chat.z.ai');
+  });
+
+  it('Kimi provider defaults to official global URL https://www.kimi.ai', () => {
+    const dummyStore = new AuthStore('/tmp/dummy');
+    const kimi = new KimiProvider(dummyStore);
+    expect(kimi.info.website).toBe('https://www.kimi.ai');
+    expect(kimi.info.loginUrl).toBe('https://www.kimi.ai');
   });
 });

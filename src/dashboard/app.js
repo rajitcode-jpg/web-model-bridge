@@ -113,9 +113,9 @@ var PROVIDER_LOGIN_URLS = {
   'deepseek-web': 'https://chat.deepseek.com/sign_in',
   'gemini-web': 'https://gemini.google.com',
   'grok-web': 'https://grok.com',
-  'kimi-web': 'https://kimi.ai',
+  'kimi-web': 'https://www.kimi.ai',
   'qwen-web': 'https://chat.qwen.ai/auth',
-  'glm-web': 'https://z.ai',
+  'glm-web': 'https://chat.z.ai',
   'perplexity-web': 'https://www.perplexity.ai',
 };
 
