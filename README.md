@@ -9,7 +9,7 @@ Turn free web-based AI interfaces into standardized **OpenAI (`/v1/chat/completi
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0%2B-blue.svg)](https://www.typescriptlang.org/)
 [![Tests](https://img.shields.io/badge/Tests-Passing-brightgreen.svg)](#testing)
 
-[Quick Start](#quick-start) · [Supported Models](#supported-models) · [Connecting AI Tools](#connecting-your-ai-tools) · [API Reference](#api-reference) · [Architecture](#architecture) · [Configuration](#configuration)
+[Quick Start](#quick-start) · [Supported Providers](#supported-providers) · [Connecting AI Tools](#connecting-your-ai-tools) · [API Reference](#api-reference) · [Architecture](#architecture) · [Configuration](#configuration)
 
 ---
 
@@ -89,27 +89,21 @@ In the Dashboard's **API Code Implementation** section (or clicking `⚡ API Sni
 
 ---
 
-## Supported Models
+## Supported Providers
 
-You can use either the full canonical ID or the convenient short alias:
+web-model-bridge provides seamless, unified API access across 9 leading AI platforms using simple provider aliases (`claude`, `chatgpt`, `deepseek`, etc.):
 
-| Short Alias | Canonical Model ID | Context Window | Web Platform |
+| Provider | Alias / Model ID | Web Platform | Highlights |
 |---|---|---|---|
-| `claude` | `claude-web/claude-sonnet-4-6` | 1,000,000 | claude.ai |
-| `claude` | `claude-web/claude-haiku-4-5` | 200,000 | claude.ai |
-| `chatgpt` | `chatgpt-web/gpt-5.4-mini` | 128,000 | chatgpt.com |
-| `chatgpt` | `chatgpt-web/gpt-5.3` | 128,000 | chatgpt.com |
-| `chatgpt` | `chatgpt-web/gpt-4o` | 128,000 | chatgpt.com |
-| `deepseek` | `deepseek-web/deepseek-v4` | 128,000 | chat.deepseek.com |
-| `deepseek` | `deepseek-web/deepseek-v4-reasoner` | 128,000 | chat.deepseek.com |
-| `gemini` | `gemini-web/gemini-3-flash` | 1,000,000 | gemini.google.com |
-| `gemini` | `gemini-web/gemini-2.5-pro` | 1,000,000 | gemini.google.com |
-| `grok` | `grok-web/grok-3` | 128,000 | grok.com |
-| `perplexity` | `perplexity-web/sonar-pro` | 128,000 | perplexity.ai |
-| `kimi` | `kimi-web/kimi-k2.5` | 256,000 | kimi.moonshot.cn |
-| `qwen` | `qwen-web/qwen-3.5-plus` | 262,000 | chat.qwen.ai |
-| `qwen` | `qwen-web/qwq` | 32,000 | chat.qwen.ai |
-| `glm` | `glm-web/glm-5` | 128,000 | chatglm.cn |
+| **Anthropic Claude** | `claude` | [claude.ai](https://claude.ai) | Sonnet & Haiku models, dual Anthropic `/v1/messages` protocol |
+| **OpenAI ChatGPT** | `chatgpt` | [chatgpt.com](https://chatgpt.com) | GPT-4o, GPT-5 series with full session preservation |
+| **DeepSeek** | `deepseek` | [chat.deepseek.com](https://chat.deepseek.com) | DeepSeek V4 & Reasoner with automatic `<think>` suppression |
+| **Google Gemini** | `gemini` | [gemini.google.com](https://gemini.google.com) | Gemini 3 Flash & 2.5 Pro with large context window |
+| **xAI Grok** | `grok` | [grok.com](https://grok.com) | Grok 3 with live reasoning & real-time search |
+| **Perplexity** | `perplexity` | [perplexity.ai](https://perplexity.ai) | Sonar Pro citation-backed search completions |
+| **Moonshot Kimi** | `kimi` | [kimi.moonshot.cn](https://kimi.moonshot.cn) | Kimi K2.5 with long-document reasoning |
+| **Alibaba Qwen** | `qwen` | [chat.qwen.ai](https://chat.qwen.ai) | Qwen 3.5 Plus & QwQ reasoning models |
+| **Zhipu GLM** | `glm` | [chatglm.cn](https://chatglm.cn) | GLM-5 series bilingual agentic intelligence |
 
 ---
 
